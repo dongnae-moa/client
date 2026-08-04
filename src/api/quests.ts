@@ -1,3 +1,4 @@
+import { File } from "expo-file-system";
 import { apiRequest } from "./client";
 
 /**
@@ -15,39 +16,37 @@ export type CreateQuestRequest = {
   longitude: number;
 };
 
-/** 업로드할 현장 사진. ImagePicker가 준 값을 그대로 담는다. */
-export type QuestImage = {
-  uri: string;
-  name: string;
-  /** Android는 바이너리 파트에 content-type이 없으면 요청을 거부한다. */
-  type: string;
-};
-
 /**
  * 미션을 만든다. `request`(JSON) + `image`(파일) 두 파트를 가진 multipart 요청이다.
  *
- * JSON 파트에 Content-Type을 붙이는 게 핵심이다. 서버가 `request` 파트를 객체로 변환하려면
- * 그 파트가 application/json이어야 하는데, RN의 FormData는 값 객체의 `type`을 그대로 파트
- * 헤더로 넣어주기 때문에(Libraries/Network/FormData.js의 getParts) 문자열 파트에도 붙일 수 있다.
- * 네이티브도 이를 그대로 사용한다(Android NetworkingModule은 파트 헤더의 content-type으로
- * RequestBody를 만들고, iOS는 파트의 `string`을 본문으로 쓴다).
+ * 파트 형식이 까다로운 이유가 있다. 이 앱의 `fetch`는 Expo가 설치한 WinterCG 구현이고,
+ * multipart를 네이티브가 아니라 JS에서 직접 만든다(expo/src/winter/fetch/convertFormData.ts).
+ * 그 변환기가 받아주는 값은 세 가지뿐이다.
  *
- * 타입 단언이 필요한 이유는 RN의 FormData 타입이 파일 파트(`uri` 필수)만 표현하고 있어서다.
+ *   1. 문자열                      → 파트 헤더에 content-type이 붙지 않는다
+ *   2. `Blob` 인스턴스             → blob의 `type`이 파트 content-type이 된다
+ *   3. `bytes()`를 가진 객체       → 같은 방식으로 `type`·`name`을 읽는다
+ *
+ * 그래서 흔히 쓰는 `{ uri, name, type }` 파일 파트나 `{ string, type }` 객체를 넣으면
+ * "Unsupported FormDataPart implementation"으로 거절된다. RN 네이티브 업로드 경로라면
+ * 동작하지만 Expo fetch는 그 경로를 타지 않는다.
+ *
+ * - `request`: 서버가 JSON으로 바인딩할 수 있게 content-type이 필요하므로 Blob으로 만든다.
+ *   RN의 Blob은 문자열 파트만 받는다(ArrayBuffer·Uint8Array는 명시적으로 거부한다).
+ * - `image`: 위 이유로 Blob을 직접 만들 수 없다(바이트 배열을 넣을 수 없다). expo-file-system의
+ *   `File`이 `bytes()`·`name`·`type`을 모두 제공해서 3번 경로로 그대로 실려 간다. 파일 이름과
+ *   MIME 타입은 File이 실제 파일에서 알아낸다.
  */
 export async function createQuest(
   request: CreateQuestRequest,
-  image: QuestImage,
+  imageUri: string,
 ): Promise<unknown> {
   const form = new FormData();
-  form.append("request", {
-    string: JSON.stringify(request),
-    type: "application/json",
-  } as unknown as Blob);
-  form.append("image", {
-    uri: image.uri,
-    name: image.name,
-    type: image.type,
-  } as unknown as Blob);
+  form.append(
+    "request",
+    new Blob([JSON.stringify(request)], { type: "application/json" }),
+  );
+  form.append("image", new File(imageUri) as unknown as Blob);
 
   return apiRequest<unknown>(CREATE_QUEST_PATH, {
     method: "POST",

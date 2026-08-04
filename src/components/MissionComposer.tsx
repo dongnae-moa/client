@@ -19,9 +19,6 @@ import { createQuest } from "../api/quests";
 import { useCurrentLocation } from "../hooks/useCurrentLocation";
 import { useTheme } from "../theme/ThemeContext";
 
-/** 업로드할 사진. ImagePicker가 준 정보를 그대로 들고 있는다. */
-type PickedPhoto = { uri: string; name: string; type: string };
-
 type MissionComposerProps = {
   visible: boolean;
   /** 등록 기준이 되는 동네 이름. 아직 정해지지 않았으면 비워둔다. */
@@ -54,21 +51,21 @@ export default function MissionComposer({
   const { coords, hasPermission, settled } = useCurrentLocation(visible);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [photo, setPhoto] = useState<PickedPhoto | null>(null);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const canSubmit =
     title.trim().length > 0 &&
     description.trim().length > 0 &&
-    photo !== null &&
+    photoUri !== null &&
     coords !== null &&
     !submitting;
 
   const reset = () => {
     setTitle("");
     setDescription("");
-    setPhoto(null);
+    setPhotoUri(null);
     setError(null);
   };
 
@@ -85,16 +82,11 @@ export default function MissionComposer({
       quality: 0.8,
     });
     if (result.canceled) return;
-    const asset = result.assets[0];
-    setPhoto({
-      uri: asset.uri,
-      name: asset.fileName ?? `mission-${asset.uri.split("/").pop() ?? "photo.jpg"}`,
-      type: asset.mimeType ?? "image/jpeg",
-    });
+    setPhotoUri(result.assets[0].uri);
   };
 
   const submit = async () => {
-    if (!canSubmit || !photo || !coords) return;
+    if (!canSubmit || !photoUri || !coords) return;
     const createdTitle = title.trim();
     setSubmitting(true);
     setError(null);
@@ -106,7 +98,7 @@ export default function MissionComposer({
           latitude: coords.latitude,
           longitude: coords.longitude,
         },
-        photo,
+        photoUri,
       );
       reset();
       onCreated(createdTitle);
@@ -168,10 +160,10 @@ export default function MissionComposer({
             <Text style={[styles.label, { color: colors.text }]}>
               현장 사진 <Text style={{ color: colors.orange }}>*</Text>
             </Text>
-            {photo ? (
+            {photoUri ? (
               <View style={styles.photoWrap}>
                 <Image
-                  source={photo.uri}
+                  source={photoUri}
                   style={styles.photo}
                   contentFit="cover"
                   transition={160}
@@ -179,7 +171,7 @@ export default function MissionComposer({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="사진 지우기"
-                  onPress={() => setPhoto(null)}
+                  onPress={() => setPhotoUri(null)}
                   style={styles.photoRemove}
                 >
                   <Ionicons name="close" size={16} color="#fff" />
