@@ -1,46 +1,40 @@
-# Dongnae-Moa home screen design QA
+# Dongnae-Moa mobile design QA
 
 ## Evidence
 
-- Source visual truth: `C:\Users\krjih\Downloads\Mobile Devices\Screenshot_20260804_214939_Expo Go.jpg`
-- Implementation capture: `C:\Users\krjih\Documents\GEEKs\client\dongnae-home-v2-top.png`
-- State: Android physical device `SM-S911N`, Expo Go SDK 57, home tab at the top of the scroll view
-- Source pixels: 1080 x 2197 portrait
-- Implementation pixels: 1080 x 2340 portrait, density 480 (360 x 780 dp)
-- Normalization: compared the app-owned portrait content after accounting for the source crop, Android system bars, density, and Expo Go development chrome
+- Reference: `C:\Users\krjih\Downloads\Mobile Devices\Screenshot_20260804_214939_Expo Go.jpg`
+- Navigation motion reference: `C:\Users\krjih\Downloads\Screen_Recording_20260804_205341.mp4`
+- Side-by-side comparison: `C:\Users\krjih\Documents\GEEKs\client\design-qa-comparison.png`
+- Dark implementation: `C:\Users\krjih\Documents\GEEKs\client\device-home-final.png`
+- Light implementation: `C:\Users\krjih\Documents\GEEKs\client\device-settings-light-final.png`
+- Device: connected Android physical device through Expo Go SDK 57, 1080 x 2340 capture
 
-## Comparison
+## Comparison and decisions
 
-The updated implementation uses the supplied logo asset with safe-area top padding, removes the hamburger menu, and follows the reference hierarchy of `추천 미션` → one featured mission → a mission-card rail. The mission rail is horizontally swipable and uses the Notion `테스트 데이터` values for community order, accessibility, facility-check, and environment missions. The rank line was replaced with a circular `73/100` Community XP meter, and the provided liquid-glass camera-style navigation was adapted to the existing four routes.
+The implementation keeps the reference information hierarchy—brand, one recommended mission, secondary missions, progress, and neighborhood context—but reduces repeated list density and colorful decoration. The home Community XP card remains the central `73/100` experience. The supplied video was used for the floating navigation behavior: translucent capsule, fixed circular indicators, center mission action, horizontal-only drag, clamped edges, and spring snap.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: Wanted Sans regular/bold are used for Korean display hierarchy; H2-sized section labels are left-aligned and the previous centered greeting was removed.
-- Spacing and layout rhythm: safe-area padding keeps the logo below the device camera/status area; recommendation, swipe rail, progress card, community status, daily mission, and persistent navigation maintain clear vertical grouping.
-- Colors and visual tokens: black background, dark surfaces, pale-green recommendation, green ring progress, and Gold badge preserve the existing Dongnae-Moa direction while the liquid-glass bar adds the supplied translucent treatment.
-- Image quality and asset fidelity: `assets/images/로고임.png` is used for the real wordmark, `assets/images/omg.png` is reused for the Notion scooter dummy missions, and Ionicons provide interface icons.
-- Copy and content: mission titles, categories, times, points, and verification data are drawn from Notion `테스트 데이터`; no full repeated mission list is shown on the home screen.
+- Themes: dark and light palettes share spacing and typography while surfaces, borders, status-bar contrast, and logo treatment adapt per mode.
+- Brand: `assets/images/로고임.png` is used for light mode and `assets/images/logo-dark.png` is the high-contrast white/green variant for dark mode. The visible logo is reduced to roughly half the previous size.
+- Navigation: five items are present in the requested order—홈, 지도, 미션, 커뮤니티, 마이. 미션 stays centered with a green circular action and checkmark icon; 커뮤니티 uses chat bubbles. The old hamburger and camera mission icon are gone.
+- Liquid glass: the navbar uses `BlurView`, translucent tint, gloss, border, shadow, and a 56 x 56 circular indicator. Only the focused icon springs; label and circle remain stable. The pan gesture is horizontal, clamped, and snaps to the nearest tab.
+- Screens: map, mission detail, community, my page, and settings now share a restrained surface/card system with realistic dummy content and the persistent nav.
 
-## Primary interactions checked
+## Interactions checked
 
-- Recommended mission card routes to `/mission`.
-- Horizontal mission rail snaps between four dummy cards and updates its position indicator.
-- Circular progress/activity card routes to `/my`.
-- Neighborhood status card routes to `/map`.
-- Daily mission card routes to `/mission`.
-- Liquid-glass bottom bar navigates home/map/mission/my; the mission tab uses the camera-style center treatment and supports horizontal tab swiping.
-
-## Comparison history
-
-1. Previous pass: the original dark home showed a centered greeting, a text-only logo, a straight rank line, and a flat four-item bottom bar.
-2. Fixes: replaced the logo with the supplied asset, added safe-area padding, removed the hamburger, added the Notion-backed swipable mission rail, changed progress to a circular 73/100 meter, and adapted `FloatingNavBar.tsx`.
-3. Post-fix evidence: `dongnae-home-v2-top.png` shows the logo fully visible, the recommendation and rail at the top, the 73/100 ring, and the new camera-style bottom navigation on the connected Android device.
+- Fast Refresh physical-device render opened successfully after Metro reload.
+- UI hierarchy exposed all five tab labels through Android UIAutomator.
+- Tapped 지도, 미션, 커뮤니티, 마이 and verified titles: `동네 지도`, `미션 상세`, `커뮤니티`, `마이페이지`.
+- Swiped the navbar from the right edge to the left; it clamped and spring-snapped to 홈.
+- Opened 설정 from 마이페이지 and switched 다크 → 화이트; verified the light surface, dark text, and light-mode navbar.
+- Home mission rail still snaps between four Notion-backed dummy cards.
 
 ## Validation
 
-- `npx tsc --noEmit` passed.
+- `npx.cmd tsc --noEmit` passed.
 - `git diff --check` passed.
-- Expo Go physical-device render passed after wrapping the app in `GestureHandlerRootView`.
+- Metro Fast Refresh physical-device render passed.
 
 ## Final result
 
