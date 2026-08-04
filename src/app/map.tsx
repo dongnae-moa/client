@@ -1,21 +1,110 @@
-import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import AppHeader from "../components/AppHeader";
-import { ScreenSurface, SurfaceCard } from "../components/ScreenSurface";
-import { useTheme } from "../theme/ThemeContext";
+import * as Location from "expo-location";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+// 1. Marker 컴포넌트 추가 import
+import MapView, { Marker, PROVIDER_GOOGLE, Region } from "react-native-maps";
 
-const rewards = [
-  { id: "coffee", category: "기프티콘", title: "동네 카페 아메리카노", detail: "제휴 카페 12곳에서 사용", price: "350P", icon: "cafe-outline" as const, color: "#d3944b" },
-  { id: "profile", category: "프로필 꾸미기", title: "초록 동네 배지", detail: "프로필에 30일 동안 표시", price: "200P", icon: "leaf-outline" as const, color: "#77c84d" },
-  { id: "discount", category: "가게 할인", title: "서초구 세탁 10% 할인", detail: "이번 달 제휴 매장에서 사용", price: "500P", icon: "pricetag-outline" as const, color: "#7d5dcc" },
-];
+const FALLBACK_REGION: Region = {
+  latitude: 37.5665,
+  longitude: 126.978,
+  latitudeDelta: 0.05,
+  longitudeDelta: 0.05,
+};
 
-export default function StoreScreen() {
-  const { colors } = useTheme();
-  const [category, setCategory] = useState("전체");
-  const visibleRewards = category === "전체" ? rewards : rewards.filter((reward) => reward.category === category);
-  return <ScreenSurface><AppHeader title="상점" /><View style={styles.balance}><View><Text style={[styles.balanceLabel, { color: colors.muted }]}>사용 가능한 퀘스트 보상</Text><Text style={[styles.balanceValue, { color: colors.text }]}>1,250 <Text style={[styles.balanceUnit, { color: colors.green }]}>P</Text></Text></View><View style={[styles.balanceIcon, { backgroundColor: colors.greenSoft }]}><Ionicons name="sparkles" size={23} color={colors.green} /></View></View><Text style={[styles.intro, { color: colors.muted }]}>미션을 완료하고 쌓은 포인트를 우리 동네 혜택으로 바꿔요.</Text><View style={styles.chips}>{["전체", "기프티콘", "프로필 꾸미기", "가게 할인"].map((item) => <Pressable key={item} onPress={() => setCategory(item)} style={[styles.chip, { backgroundColor: category === item ? colors.green : colors.surface, borderColor: category === item ? colors.green : colors.border }]}><Text style={[styles.chipText, { color: category === item ? "#17310b" : colors.text }]}>{item}</Text></Pressable>)}</View><Text style={[styles.sectionTitle, { color: colors.text }]}>추천 보상</Text>{visibleRewards.map((reward) => <SurfaceCard key={reward.id} style={styles.rewardCard}><View style={[styles.rewardIcon, { backgroundColor: reward.color + "26" }]}><Ionicons name={reward.icon} size={24} color={reward.color} /></View><View style={styles.rewardCopy}><View style={styles.rewardHeader}><Text style={[styles.rewardCategory, { color: colors.green }]}>{reward.category}</Text><Text style={[styles.rewardPrice, { color: colors.text }]}>{reward.price}</Text></View><Text style={[styles.rewardTitle, { color: colors.text }]}>{reward.title}</Text><Text style={[styles.rewardDetail, { color: colors.muted }]}>{reward.detail}</Text><Pressable style={[styles.rewardButton, { backgroundColor: colors.surfaceRaised }]}><Text style={[styles.rewardButtonText, { color: colors.green }]}>자세히 보기</Text><Ionicons name="arrow-forward" size={14} color={colors.green} /></Pressable></View></SurfaceCard>)}<SurfaceCard style={[styles.partnerCard, { backgroundColor: colors.surfaceRaised }]}><View style={[styles.partnerIcon, { backgroundColor: colors.greenSoft }]}><Ionicons name="storefront-outline" size={23} color={colors.green} /></View><View style={styles.partnerCopy}><Text style={[styles.partnerTitle, { color: colors.text }]}>우리 동네 제휴 가게</Text><Text style={[styles.partnerDetail, { color: colors.muted }]}>미션 포인트로 이용할 수 있는 혜택을 준비 중이에요.</Text></View><Ionicons name="chevron-forward" size={18} color={colors.muted} /></SurfaceCard></ScreenSurface>;
+export default function DarkOSMMap() {
+  const [region, setRegion] = useState<Region | null>(null);
+  const [hasPermission, setHasPermission] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        const granted = status === "granted";
+        if (!isMounted) return;
+        setHasPermission(granted);
+
+        if (!granted) {
+          setRegion(FALLBACK_REGION);
+          return;
+        }
+
+        const position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        if (!isMounted) return;
+        setRegion({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        });
+      } catch (error) {
+        if (isMounted) {
+          setRegion(FALLBACK_REGION);
+        }
+      }
+    })();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (!region) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#ffffff" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <MapView
+        provider={PROVIDER_GOOGLE}
+        style={styles.map}
+        initialCamera={{
+          center: {
+            latitude: region.latitude,
+            longitude: region.longitude,
+          },
+          pitch: 0, // 3D 경사각 설정 (약 45~60도 추천)
+          heading: 0, // 방위각 (지도 회전)
+          altitude: 1000,
+          zoom: 17, // 3D 건물이 잘 보이는 로컬 확대 수준
+        }}
+        pitchEnabled={true} // 사용자가 두 손가락으로 경사각 조절 가능
+        rotateEnabled={true} // 지도 회전 가능
+        showsBuildings={true} // 3D 건물 표시
+        showsUserLocation={hasPermission}
+        showsMyLocationButton={hasPermission}
+        followsUserLocation={false}
+        googleMapId="449973237f53c8cbcd81d11f"
+      >
+        {/* 3. 마커 추가 (3D 뷰 위에서도 정상 작동) */}
+        <Marker
+          coordinate={{
+            latitude: region.latitude,
+            longitude: region.longitude,
+          }}
+          title="현재 위치"
+          description="여기 있습니다."
+        />
+      </MapView>
+    </View>
+  );
 }
 
-const styles = StyleSheet.create({ balance: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginTop: 4, paddingHorizontal: 2 }, balanceLabel: { fontFamily: "WantedSansR", fontSize: 12 }, balanceValue: { fontFamily: "WantedSansB", fontSize: 30, marginTop: 4 }, balanceUnit: { fontSize: 15 }, balanceIcon: { alignItems: "center", borderRadius: 999, height: 55, justifyContent: "center", width: 55 }, intro: { fontFamily: "WantedSansR", fontSize: 12, lineHeight: 18, marginTop: 8 }, chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 17 }, chip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 11, paddingVertical: 8 }, chipText: { fontFamily: "WantedSansB", fontSize: 10 }, sectionTitle: { fontFamily: "WantedSansB", fontSize: 19, marginTop: 24 }, rewardCard: { flexDirection: "row", marginTop: 10, padding: 13 }, rewardIcon: { alignItems: "center", borderRadius: 15, height: 54, justifyContent: "center", width: 54 }, rewardCopy: { flex: 1, marginLeft: 12 }, rewardHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" }, rewardCategory: { fontFamily: "WantedSansB", fontSize: 10 }, rewardPrice: { fontFamily: "WantedSansB", fontSize: 13 }, rewardTitle: { fontFamily: "WantedSansB", fontSize: 14, marginTop: 5 }, rewardDetail: { fontFamily: "WantedSansR", fontSize: 10, marginTop: 4 }, rewardButton: { alignItems: "center", alignSelf: "flex-start", borderRadius: 999, flexDirection: "row", gap: 5, marginTop: 9, paddingHorizontal: 10, paddingVertical: 6 }, rewardButtonText: { fontFamily: "WantedSansB", fontSize: 10 }, partnerCard: { alignItems: "center", flexDirection: "row", marginTop: 14 }, partnerIcon: { alignItems: "center", borderRadius: 13, height: 42, justifyContent: "center", width: 42 }, partnerCopy: { flex: 1, marginLeft: 10 }, partnerTitle: { fontFamily: "WantedSansB", fontSize: 13 }, partnerDetail: { fontFamily: "WantedSansR", fontSize: 10, lineHeight: 15, marginTop: 3 } });
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  map: { flex: 1 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+  },
+});
