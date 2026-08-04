@@ -8,6 +8,12 @@ type AuthBridge = {
   onSessionExpired: () => void;
 };
 
+type ApiRequestOptions = {
+  authenticated?: boolean;
+  retry?: boolean;
+  handleUnauthorized?: boolean;
+};
+
 let authBridge: AuthBridge | null = null;
 let refreshInFlight: Promise<string | null> | null = null;
 
@@ -61,7 +67,7 @@ async function parseResponse<T>(response: Response): Promise<ApiEnvelope<T>> {
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {},
-  options: { authenticated?: boolean; retry?: boolean } = {},
+  options: ApiRequestOptions = {},
 ): Promise<T> {
   const authenticated = options.authenticated !== false;
   const headers = new Headers(init.headers);
@@ -72,7 +78,7 @@ export async function apiRequest<T>(
   }
 
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
-  if (response.status === 401 && authenticated && options.retry !== false && authBridge) {
+  if (response.status === 401 && authenticated && options.handleUnauthorized !== false && options.retry !== false && authBridge) {
     refreshInFlight ??= authBridge.refreshAccessToken().finally(() => {
       refreshInFlight = null;
     });

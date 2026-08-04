@@ -146,12 +146,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const refreshProfile = useCallback(async () => {
     try {
-      const current = await apiRequest<CurrentUser>("/v1/users/me");
+      const current = await apiRequest<CurrentUser>("/v1/users/me", {}, { handleUnauthorized: false });
       await storeUser(current);
       setPhase(current.neighborhoodId ? "authenticated" : "needsNeighborhood");
       return current;
     } catch (error) {
-      if (error instanceof ApiError && [404, 405].includes(error.status) && userRef.current) return userRef.current;
+      if (error instanceof ApiError && [401, 403, 404, 405].includes(error.status) && userRef.current) return userRef.current;
       throw error;
     }
   }, [storeUser]);
