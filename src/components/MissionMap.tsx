@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import type { NearbyMission } from "../data/missions";
-import { lightMapStyle } from "../theme/lightMapStyle";
 import { useTheme, type AppTheme, type ThemeMode } from "../theme/ThemeContext";
 import { destinationPoint, type Coords } from "../utils/geo";
 
@@ -15,9 +14,10 @@ const MAP_ID_DARK =
   (Constants.expoConfig?.extra?.googleMapIdDark as string | undefined) ??
   "449973237f53c8cbcd81d11f";
 // 라이트용 Map ID가 없으면 대신 lightMapStyle(JSON)로 라이트를 강제한다.
-const MAP_ID_LIGHT = Constants.expoConfig?.extra?.googleMapIdLight as
-  | string
-  | undefined;
+// 폐기
+const MAP_ID_LIGHT =
+  (Constants.expoConfig?.extra?.googleMapIdDark as string | undefined) ??
+  "449973237f53c8cbcd81d11f";
 
 /** 선택된 핀으로 카메라를 옮길 때 쓰는 확대 수준. */
 const FOCUS_ZOOM = 17;
@@ -186,8 +186,8 @@ function ThemedMap({
       followsUserLocation={false}
       googleMapId={mapId}
       // Map ID가 있으면 Cloud 스타일이 우선이라 customMapStyle은 무시된다.
-      // 라이트용 Map ID가 없을 때만 JSON 스타일로 라이트를 강제한다.
-      customMapStyle={mode === "light" && !mapId ? lightMapStyle : undefined}
+      // 라이트용 Map ID가 없을 때만 JSON 스타일로 라이트를 강제한다. (폐기)
+      // customMapStyle={mode === "light" && !mapId ? lightMapStyle : undefined}
       userInterfaceStyle={mode}
       toolbarEnabled={false}
     >
