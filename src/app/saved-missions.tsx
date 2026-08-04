@@ -3,18 +3,32 @@ import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { getQuests } from "../api/quests";
+import { useAuth } from "../auth/AuthContext";
 import AppHeader from "../components/AppHeader";
 import { ScreenSurface, SurfaceCard } from "../components/ScreenSurface";
-import { dummyMissions } from "../data/missions";
+import type { Mission } from "../data/missions";
 import { getSavedMissionIds, setMissionSaved } from "../data/savedMissions";
+import { useCurrentLocation } from "../hooks/useCurrentLocation";
 import { useTheme } from "../theme/ThemeContext";
 
 export default function SavedMissionsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const { user } = useAuth();
+  const { origin } = useCurrentLocation(true);
   const [savedIds, setSavedIds] = useState<string[]>([]);
-  useFocusEffect(useCallback(() => { void getSavedMissionIds().then(setSavedIds); }, []));
-  const missions = useMemo(() => dummyMissions.filter((mission) => savedIds.includes(mission.id)), [savedIds]);
+  // 저장 목록은 id만 갖고 있어서, 카드에 보여줄 내용은 동네 퀘스트 목록에서 찾아온다.
+  const [neighborhoodMissions, setNeighborhoodMissions] = useState<Mission[]>([]);
+  const neighborhoodId = user?.neighborhoodId ?? null;
+  useFocusEffect(useCallback(() => {
+    void getSavedMissionIds().then(setSavedIds);
+    if (neighborhoodId == null) return;
+    void getQuests({ neighborhoodId, latitude: origin.latitude, longitude: origin.longitude })
+      .then(setNeighborhoodMissions)
+      .catch((requestError) => console.log("[saved] ✗ 목록 조회 실패", requestError));
+  }, [neighborhoodId, origin.latitude, origin.longitude]));
+  const missions = useMemo(() => neighborhoodMissions.filter((mission) => savedIds.includes(mission.id)), [neighborhoodMissions, savedIds]);
 
   const remove = async (id: string) => {
     setSavedIds(await setMissionSaved(id, false));

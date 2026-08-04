@@ -1,4 +1,9 @@
 import { File } from "expo-file-system";
+import type {
+  Difficulty,
+  Mission,
+  MissionStatus,
+} from "../data/missions";
 import { apiRequest } from "./client";
 
 /**
@@ -7,6 +12,99 @@ import { apiRequest } from "./client";
  * 다른 API가 모두 `/v1/...` 아래에 있어 같은 규칙을 따랐다. 서버 경로가 다르면 여기만 고치면 된다.
  */
 const CREATE_QUEST_PATH = "/v1/quests";
+
+/** 동네별 퀘스트 목록 조회. */
+const LIST_QUESTS_PATH = "/v1/quests";
+
+/**
+ * 목록 응답 한 건. 서버가 주는 그대로의 형태다.
+ *
+ * `id`가 숫자이고 `status`·`difficulty`가 그냥 문자열로 오는 점이 앱의 `Mission`과 다르다.
+ * 그래서 화면에 넘기기 전에 `toMission`으로 한 번 변환한다.
+ */
+export type QuestListItem = {
+  id: number;
+  title: string;
+  description: string;
+  imageUrl: string;
+  rewardPoint: number;
+  status: string;
+  minutes: number;
+  difficulty: string;
+  checkpoints: string[];
+  authorNickname: string;
+  neighborhood: { name: string; sido: string; sigungu: string };
+  latitude: number;
+  longitude: number;
+  distanceMeters: number;
+};
+
+const MISSION_STATUSES: MissionStatus[] = [
+  "RECRUITING",
+  "IN_PROGRESS",
+  "COMPLETED",
+];
+const DIFFICULTIES: Difficulty[] = ["쉬움", "보통", "어려움"];
+
+/**
+ * 목록 응답을 앱에서 쓰는 `Mission`으로 바꾼다.
+ *
+ * 서버가 예상 밖의 status·difficulty를 주더라도 화면이 깨지지 않게 기본값으로 눕힌다.
+ * (statusMeta·difficultyRank가 키로 조회하기 때문에 모르는 값이 들어오면 undefined가 된다.)
+ */
+export function toMission(item: QuestListItem): Mission {
+  const status = MISSION_STATUSES.includes(item.status as MissionStatus)
+    ? (item.status as MissionStatus)
+    : "RECRUITING";
+  const difficulty = DIFFICULTIES.includes(item.difficulty as Difficulty)
+    ? (item.difficulty as Difficulty)
+    : "보통";
+  return {
+    // 앱은 선택 상태·저장 목록을 문자열 id로 다룬다.
+    id: String(item.id),
+    title: item.title,
+    imageUrl: item.imageUrl,
+    distanceMeters: item.distanceMeters,
+    status,
+    minutes: item.minutes,
+    rewardPoint: item.rewardPoint,
+    difficulty,
+    authorNickname: item.authorNickname,
+    neighborhood: item.neighborhood,
+    latitude: item.latitude,
+    longitude: item.longitude,
+    description: item.description,
+    checkpoints: item.checkpoints ?? [],
+  };
+}
+
+/**
+ * 동네에 등록된 퀘스트를 모두 가져온다. 서버가 현재 위치 기준 거리를 계산해 가까운 순으로 준다.
+ *
+ * @param neighborhoodId 조회할 동네. 로그인 사용자의 `neighborhoodId`를 넘긴다.
+ */
+export async function getQuests(params: {
+  neighborhoodId: number;
+  latitude: number;
+  longitude: number;
+}): Promise<Mission[]> {
+  const query = new URLSearchParams({
+    neighborhoodId: String(params.neighborhoodId),
+    latitude: String(params.latitude),
+    longitude: String(params.longitude),
+  });
+  const items = await apiRequest<QuestListItem[]>(
+    `${LIST_QUESTS_PATH}?${query.toString()}`,
+    {},
+    { handleUnauthorized: false },
+  );
+  // DEBUG: 몇 건 왔는지, 첫 건이 어떤 모양인지 남긴다.
+  console.log("[quest] 목록 조회 결과", {
+    count: items?.length ?? 0,
+    first: items?.[0],
+  });
+  return (items ?? []).map(toMission);
+}
 
 /** 서버의 CreateQuestRequest. 이 네 값이 JSON 파트로 들어간다. */
 export type CreateQuestRequest = {

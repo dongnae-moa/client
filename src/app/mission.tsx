@@ -20,14 +20,16 @@ import MissionComposer from "../components/MissionComposer";
 import MissionDetailSheet from "../components/MissionDetailSheet";
 import MissionFilterPanel from "../components/MissionFilterPanel";
 import MissionMap from "../components/MissionMap";
+import { ApiError } from "../api/client";
+import { getQuests } from "../api/quests";
 import {
-  buildDummyMissions,
   countActiveFilters,
   DEFAULT_FILTERS,
   filterMissions,
   statusFilters,
   statusMeta,
   summarizeFilters,
+  type Mission,
   type MissionFilters,
 } from "../data/missions";
 import { getSavedMissionIds, toggleMissionSaved } from "../data/savedMissions";
@@ -88,9 +90,52 @@ export default function MissionScreen() {
     chipsHeight +
     (noticeVisible ? noticeHeight : 0);
 
-  // 서버 연동 전까지는 더미 목록을 쓴다. 현재 위치를 기준점으로 넘겨 어디서 앱을 켜도
-  // 핀이 내 주변에 찍히게 한다. 실제 API를 붙이면 이 자리에 응답 데이터를 넣으면 된다.
-  const allMissions = useMemo(() => buildDummyMissions(origin), [origin]);
+  const [allMissions, setAllMissions] = useState<Mission[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const neighborhoodId = user?.neighborhoodId ?? null;
+
+  /**
+   * 동네 퀘스트 목록을 서버에서 가져온다. 거리 계산과 가까운 순 정렬은 서버가 해준다.
+   *
+   * 위치를 못 구했으면 기준 좌표(origin)를 그대로 넘긴다. 거리 표시가 기준점에 따라 달라질 뿐
+   * 목록 자체는 볼 수 있어야 하기 때문이다. 미션 등록과 달리 좌표가 정확하지 않아도
+   * 서버 데이터가 망가지지 않는다.
+   */
+  const loadMissions = useCallback(async () => {
+    if (neighborhoodId == null) {
+      setAllMissions([]);
+      setLoadError("동네를 먼저 설정하면 주변 미션을 볼 수 있어요.");
+      return;
+    }
+    try {
+      const items = await getQuests({
+        neighborhoodId,
+        latitude: origin.latitude,
+        longitude: origin.longitude,
+      });
+      setAllMissions(items);
+      setLoadError(null);
+    } catch (requestError) {
+      // DEBUG: 실패 원인을 콘솔에도 남긴다.
+      console.log("[mission] ✗ 목록 조회 실패", requestError);
+      setAllMissions([]);
+      setLoadError(
+        requestError instanceof ApiError
+          ? `${requestError.message} (HTTP ${requestError.status})`
+          : `미션을 불러오지 못했어요: ${
+              (requestError as Error)?.message ?? "알 수 없는 오류"
+            }`,
+      );
+    }
+  }, [neighborhoodId, origin.latitude, origin.longitude]);
+
+  // 탭을 열 때마다, 그리고 동네·기준 좌표가 바뀔 때마다 다시 불러온다.
+  useFocusEffect(
+    useCallback(() => {
+      void loadMissions();
+    }, [loadMissions]),
+  );
+
   const missions = useMemo(
     () => filterMissions(allMissions, filters),
     [allMissions, filters],
@@ -517,8 +562,34 @@ export default function MissionScreen() {
         </Pressable>
       )}
 
+      {/* 목록을 못 불러왔을 때. 눌러서 다시 시도한다. */}
+      {loadError ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="미션 목록 다시 불러오기"
+          onPress={() => {
+            void loadMissions();
+          }}
+          style={({ pressed }) => [
+            styles.createdToast,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.orange,
+              bottom: navBarHeight + MAP_CONTROL_GAP + CREATE_FAB_HEIGHT + 8,
+            },
+            pressed && styles.pressed,
+          ]}
+        >
+          <Ionicons name="alert-circle-outline" size={17} color={colors.orange} />
+          <Text style={[styles.createdToastText, { color: colors.text }]}>
+            {loadError}
+          </Text>
+          <Ionicons name="refresh" size={15} color={colors.muted} />
+        </Pressable>
+      ) : null}
+
       {/* 지도 모드에서 결과가 비었을 때 안내 */}
-      {viewMode === "map" && settled && missions.length === 0 ? (
+      {viewMode === "map" && settled && !loadError && missions.length === 0 ? (
         <View
           style={[
             styles.mapEmpty,
@@ -568,6 +639,8 @@ export default function MissionScreen() {
         onCreated={(title) => {
           setComposerOpen(false);
           setCreatedNotice(`"${title}" 미션을 등록했어요.`);
+          // 방금 만든 미션이 지도와 목록에 바로 보이도록 다시 불러온다.
+          void loadMissions();
         }}
       />
 
