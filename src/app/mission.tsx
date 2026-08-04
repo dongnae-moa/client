@@ -14,7 +14,9 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useAuth } from "../auth/AuthContext";
 import { useNavBarHeight } from "../components/FloatingNavBar";
+import MissionComposer from "../components/MissionComposer";
 import MissionDetailSheet from "../components/MissionDetailSheet";
 import MissionFilterPanel from "../components/MissionFilterPanel";
 import MissionMap from "../components/MissionMap";
@@ -35,10 +37,14 @@ import { useTheme } from "../theme/ThemeContext";
 /** 구글 로고·내 위치 버튼이 네비바나 상세 시트에 딱 붙지 않도록 두는 여유 간격(dp). */
 const MAP_CONTROL_GAP = 12;
 
+/** 미션 만들기 버튼 높이. 빈 결과 안내를 이 버튼 위로 올릴 때 쓴다. */
+const CREATE_FAB_HEIGHT = 46;
+
 export default function MissionScreen() {
   const insets = useSafeAreaInsets();
   const navBarHeight = useNavBarHeight();
   const { colors, mode } = useTheme();
+  const { user } = useAuth();
   const { height: screenHeight } = useWindowDimensions();
 
   // 모든 탭이 앱 시작 시 함께 마운트되므로(_layout.tsx의 lazy: false),
@@ -62,6 +68,15 @@ export default function MissionScreen() {
   const [chipsHeight, setChipsHeight] = useState(0);
   const [noticeHeight, setNoticeHeight] = useState(0);
   const [sheetHeight, setSheetHeight] = useState(0);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [createdNotice, setCreatedNotice] = useState<string | null>(null);
+
+  // 등록 안내는 잠깐만 띄운다.
+  useEffect(() => {
+    if (!createdNotice) return;
+    const timer = setTimeout(() => setCreatedNotice(null), 2600);
+    return () => clearTimeout(timer);
+  }, [createdNotice]);
 
   // 상단바에서 "항상 보이는" 부분의 높이. 펼쳐진 필터 패널은 지도 위에 겹치기만 하고
   // 여기에 넣지 않는다. 상·하 패딩 합이 화면 높이에 가까워지면 지도 카메라가 튄다.
@@ -478,6 +493,30 @@ export default function MissionScreen() {
         ) : null}
       </View>
 
+      {/* 미션 만들기: 지도를 가리지 않는 오른쪽 아래 플로팅 버튼.
+          상세 시트가 열려 있을 때는 시트와 겹치지 않도록 숨긴다. */}
+      {selectedMission ? null : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="미션 만들기"
+          onPress={() => {
+            setFilterOpen(false);
+            setComposerOpen(true);
+          }}
+          style={({ pressed }) => [
+            styles.createFab,
+            {
+              backgroundColor: colors.green,
+              bottom: navBarHeight + MAP_CONTROL_GAP,
+            },
+            pressed && styles.pressed,
+          ]}
+        >
+          <Ionicons name="add" size={20} color="#17310b" />
+          <Text style={styles.createFabText}>미션 만들기</Text>
+        </Pressable>
+      )}
+
       {/* 지도 모드에서 결과가 비었을 때 안내 */}
       {viewMode === "map" && settled && missions.length === 0 ? (
         <View
@@ -486,7 +525,8 @@ export default function MissionScreen() {
             {
               backgroundColor: colors.surface,
               borderColor: colors.border,
-              bottom: navBarHeight + 8,
+              // 만들기 버튼 위로 올려 겹치지 않게 둔다.
+              bottom: navBarHeight + MAP_CONTROL_GAP + CREATE_FAB_HEIGHT + 8,
             },
           ]}
         >
@@ -519,6 +559,37 @@ export default function MissionScreen() {
           maxBodyHeight={screenHeight * 0.34}
           onMeasure={setSheetHeight}
         />
+      ) : null}
+
+      <MissionComposer
+        visible={composerOpen}
+        neighborhoodName={user?.neighborhoodName}
+        onClose={() => setComposerOpen(false)}
+        onSubmit={(draft) => {
+          setComposerOpen(false);
+          setCreatedNotice(`"${draft.title}" 미션을 등록 요청했어요.`);
+        }}
+      />
+
+      {createdNotice ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="안내 닫기"
+          onPress={() => setCreatedNotice(null)}
+          style={[
+            styles.createdToast,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.green,
+              bottom: navBarHeight + MAP_CONTROL_GAP,
+            },
+          ]}
+        >
+          <Ionicons name="checkmark-circle" size={17} color={colors.green} />
+          <Text style={[styles.createdToastText, { color: colors.text }]}>
+            {createdNotice}
+          </Text>
+        </Pressable>
       ) : null}
     </View>
   );
@@ -634,6 +705,37 @@ const styles = StyleSheet.create({
     zIndex: 25,
   },
   mapEmptyText: { flex: 1, fontFamily: "WantedSansB", fontSize: 11 },
+  createFab: {
+    alignItems: "center",
+    borderRadius: 999,
+    flexDirection: "row",
+    gap: 5,
+    height: CREATE_FAB_HEIGHT,
+    paddingHorizontal: 16,
+    position: "absolute",
+    right: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 10,
+    zIndex: 26,
+  },
+  createFabText: { color: "#17310b", fontFamily: "WantedSansB", fontSize: 13 },
+  createdToast: {
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 7,
+    left: 14,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    position: "absolute",
+    right: 14,
+    zIndex: 40,
+  },
+  createdToastText: { flex: 1, fontFamily: "WantedSansB", fontSize: 11 },
   missionCard: {
     alignItems: "center",
     borderRadius: 18,

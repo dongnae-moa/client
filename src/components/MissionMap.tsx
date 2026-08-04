@@ -156,17 +156,24 @@ export default function MissionMap({
       bottomPadding={bottomPadding}
       onPressMap={handleMapPress}
     >
-      {pins.map((pin) => (
-        <MissionMarker
-          key={pin.mission.id}
-          pin={pin}
-          mode={mode}
-          colors={colors}
-          selected={pin.mission.id === selectedId}
-          visible={visible}
-          onPress={() => handleMarkerPress(pin.mission.id)}
-        />
-      ))}
+      {pins.map((pin) => {
+        const selected = pin.mission.id === selectedId;
+        return (
+          <MissionMarker
+            // 선택 상태를 key에 넣어 선택·해제 때 마커를 새로 마운트한다. 커스텀 뷰 마커는
+            // 비트맵으로 캐시되는데, tracksViewChanges를 다시 켜거나 redraw()를 불러도
+            // 이전(선택된) 비트맵이 남는 경우가 있어서 상세를 닫아도 핀이 계속 켜져 보였다.
+            // 새로 마운트하면 네이티브 마커가 처음부터 현재 모습으로 만들어져 확실하다.
+            key={`${pin.mission.id}:${selected ? "on" : "off"}`}
+            pin={pin}
+            mode={mode}
+            colors={colors}
+            selected={selected}
+            visible={visible}
+            onPress={() => handleMarkerPress(pin.mission.id)}
+          />
+        );
+      })}
     </ThemedMap>
   );
 }
@@ -248,11 +255,11 @@ function ThemedMap({
  *
  * 다만 플래그를 다시 켜는 것만으로는 재래스터화가 보장되지 않는다. Android 구현은 내부
  * 변경 카운터가 0이면 스냅샷을 만들지 않고 트래킹에서 빠지고, 그 뒤 플래그를 끌 때도
- * "이미 비활성"이라 판단해 다시 그리지 않는다. 그래서 선택이 풀린 핀이 이전(선택된) 비트맵
- * 그대로 남거나 깨져 보인다. `redraw()`는 이 게이팅을 건너뛰고 즉시 다시 그리므로 함께 호출한다.
+ * "이미 비활성"이라 판단해 다시 그리지 않는다. `redraw()`로 강제해도 이전 비트맵이 남는 걸
+ * 확인했기 때문에, 선택 상태 변화는 상위에서 key를 바꿔 새로 마운트하는 쪽으로 처리한다.
  *
- * 목록 뒤에 가려져 있는 동안 일어난 변경도 눈에 보이지 않으니, 지도가 다시 보일 때
- * (`visible`) 한 번 더 다시 그린다.
+ * 여기 남은 tracking·redraw는 마운트 직후와, 목록 뒤에 가려져 있다가 지도가 다시 보일 때
+ * (`visible`) 비트맵을 채우는 역할만 한다. 이때는 마커가 다시 마운트되지 않기 때문이다.
  */
 function MissionMarker({
   pin,
