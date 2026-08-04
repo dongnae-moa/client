@@ -103,10 +103,15 @@ export default function MissionComposer({
       reset();
       onCreated(createdTitle);
     } catch (requestError) {
+      // DEBUG: 화면에 보이는 문구만으로는 원인을 알 수 없어 원본 에러를 그대로 남긴다.
+      console.log("[composer] ✗ 등록 실패", requestError);
+      const status = (requestError as { status?: number })?.status;
       setError(
         requestError instanceof ApiError
-          ? requestError.message
-          : "미션을 등록하지 못했어요. 잠시 후 다시 시도해주세요.",
+          ? `${requestError.message} (HTTP ${requestError.status})`
+          : `미션을 등록하지 못했어요: ${
+              (requestError as Error)?.message ?? "알 수 없는 오류"
+            }${status ? ` (HTTP ${status})` : ""}`,
       );
       console.log(requestError);
     } finally {

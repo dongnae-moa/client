@@ -47,9 +47,13 @@ function inferApiBaseUrl() {
 }
 
 export const API_BASE_URL = inferApiBaseUrl();
+// DEBUG: 실제로 어떤 서버 주소로 붙는지 확인한다(개발 빌드·Expo Go·에뮬레이터에서 다르다).
+console.log("[api] API_BASE_URL =", API_BASE_URL);
 
-async function parseResponse<T>(response: Response): Promise<ApiEnvelope<T>> {
+async function parseResponse<T>(response: Response, url: string): Promise<ApiEnvelope<T>> {
   const text = await response.text();
+  // DEBUG: 응답 원문을 남긴다. 서버 에러 메시지가 message 필드에 없을 때도 보인다.
+  console.log(`[api] ← ${response.status} ${url}`, text ? text.slice(0, 600) : "(빈 응답 본문)");
   let body: Partial<ApiEnvelope<T>> | null = null;
   if (text) {
     try {
@@ -82,7 +86,23 @@ export async function apiRequest<T>(
     if (token) headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  const url = `${API_BASE_URL}${path}`;
+  // DEBUG: 요청이 어디로, 어떤 형태로 나가는지 남긴다. 경로·인증·multipart 여부를 한 줄로 본다.
+  console.log(`[api] → ${init.method ?? "GET"} ${url}`, {
+    multipart: isMultipart,
+    authorization: headers.has("Authorization"),
+    contentType: headers.get("Content-Type") ?? "(fetch가 직접 설정)",
+  });
+
+  let response: Response;
+  try {
+    response = await fetch(url, { ...init, headers });
+  } catch (networkError) {
+    // DEBUG: 여기 걸리면 서버에 닿지 못한 것이다(주소 오류·연결 거부·Android cleartext 차단 등).
+    console.log(`[api] ✗ 요청 자체가 실패 ${url}`, networkError);
+    throw networkError;
+  }
+
   if (response.status === 401 && authenticated && options.handleUnauthorized !== false && options.retry !== false && authBridge) {
     refreshInFlight ??= authBridge.refreshAccessToken().finally(() => {
       refreshInFlight = null;
@@ -94,7 +114,7 @@ export async function apiRequest<T>(
     authBridge.onSessionExpired();
   }
 
-  return (await parseResponse<T>(response)).data;
+  return (await parseResponse<T>(response, url)).data;
 }
 
 export function publicApiRequest<T>(path: string, init: RequestInit = {}) {

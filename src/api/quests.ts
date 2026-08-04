@@ -41,15 +41,74 @@ export async function createQuest(
   request: CreateQuestRequest,
   imageUri: string,
 ): Promise<unknown> {
-  const form = new FormData();
-  form.append(
-    "request",
-    new Blob([JSON.stringify(request)], { type: "application/json" }),
-  );
-  form.append("image", new File(imageUri) as unknown as Blob);
+  // DEBUG: 보낼 JSON과 사진 경로.
+  console.log("[quest] 등록 시작", { request, imageUri });
 
-  return apiRequest<unknown>(CREATE_QUEST_PATH, {
-    method: "POST",
-    body: form,
-  });
+  const form = new FormData();
+
+  // DEBUG: JSON 파트. RN Blob이 문자열을 못 받으면 여기서 터진다.
+  let jsonPart: Blob;
+  try {
+    jsonPart = new Blob([JSON.stringify(request)], {
+      type: "application/json",
+    });
+    console.log("[quest] request 파트 생성", {
+      size: jsonPart.size,
+      type: jsonPart.type,
+    });
+  } catch (blobError) {
+    console.log("[quest] ✗ request 파트(Blob) 생성 실패", blobError);
+    throw blobError;
+  }
+  form.append("request", jsonPart);
+
+  // DEBUG: 이미지 파트. expo-file-system 네이티브 모듈이 없으면(리빌드 안 했으면) 여기서 터진다.
+  // 파일이 없거나 size가 0이면 서버가 받아도 빈 파일이 된다.
+  let filePart: File;
+  try {
+    filePart = new File(imageUri);
+    console.log("[quest] image 파트 생성", {
+      uri: filePart.uri,
+      exists: filePart.exists,
+      size: filePart.size,
+      type: filePart.type,
+      name: filePart.name,
+      hasBytes: typeof (filePart as { bytes?: unknown }).bytes === "function",
+    });
+  } catch (fileError) {
+    console.log("[quest] ✗ image 파트(File) 생성 실패", fileError);
+    throw fileError;
+  }
+  form.append("image", filePart as unknown as Blob);
+
+  // DEBUG: 최종 파트 목록. Expo fetch는 문자열·Blob·bytes() 객체만 받으므로 종류를 확인한다.
+  try {
+    const parts = Array.from(
+      (form as unknown as { entries: () => Iterable<[string, unknown]> }).entries(),
+    ).map(([name, value]) => ({
+      name,
+      kind: typeof value === "string" ? "string" : (value as object)?.constructor?.name,
+      isBlob: value instanceof Blob,
+      hasBytes: typeof (value as { bytes?: unknown })?.bytes === "function",
+    }));
+    console.log("[quest] FormData 파트", parts);
+  } catch (partsError) {
+    console.log("[quest] 파트 목록을 읽지 못했어요", partsError);
+  }
+
+  try {
+    const result = await apiRequest<unknown>(CREATE_QUEST_PATH, {
+      method: "POST",
+      body: form,
+    });
+    console.log("[quest] 등록 성공", result);
+    return result;
+  } catch (requestError) {
+    console.log("[quest] ✗ 등록 실패", {
+      name: (requestError as Error)?.name,
+      message: (requestError as Error)?.message,
+      status: (requestError as { status?: number })?.status,
+    });
+    throw requestError;
+  }
 }
