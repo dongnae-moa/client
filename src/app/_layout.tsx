@@ -64,7 +64,7 @@ function AppRoot() {
           screenOptions={{ animation: "none", headerShown: false, lazy: false, sceneStyle: { backgroundColor: colors.background } }}
         >
           <Tabs.Screen name="index" />
-          <Tabs.Screen name="map" />
+          {/* 지도와 미션은 mission 한 화면으로 합쳐져 있다. */}
           <Tabs.Screen name="mission" />
           <Tabs.Screen name="community" />
           <Tabs.Screen name="my" />

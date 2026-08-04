@@ -16,10 +16,10 @@ function ProgressRing({ colors }: { colors: ReturnType<typeof useTheme>["colors"
   return (
     <View style={styles.progressRingWrap} accessibilityLabel="이번 주 Community XP 진행도 73점">
       <Svg width={104} height={104} viewBox="0 0 104 104">
-        <Circle cx="52" cy="52" r={radius} stroke="#2b3a28" strokeWidth="10" fill="none" />
+        <Circle cx="52" cy="52" r={radius} stroke={colors.border} strokeWidth="10" fill="none" />
         <Circle cx="52" cy="52" r={radius} stroke={colors.green} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={circumference * 0.27} fill="none" transform="rotate(-90 52 52)" />
       </Svg>
-      <View style={styles.progressRingText}><Text style={styles.progressValue}>73</Text><Text style={styles.progressTotal}>/100</Text></View>
+      <View style={styles.progressRingText}><Text style={[styles.progressValue, { color: colors.text }]}>73</Text><Text style={[styles.progressTotal, { color: colors.muted }]}>/100</Text></View>
     </View>
   );
 }
@@ -55,18 +55,18 @@ export default function Index() {
 
         <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>다른 미션</Text><Text style={[styles.sectionHint, { color: colors.muted }]}>옆으로 넘겨보세요</Text></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={missionCardWidth + 12} decelerationRate="fast" contentContainerStyle={styles.missionRail} onMomentumScrollEnd={(event) => setActiveMission(Math.round(event.nativeEvent.contentOffset.x / (missionCardWidth + 12)) % missionCards.length)}>
-          {missionCards.map((item) => <View key={item.shortTitle} style={[styles.swipeCard, { width: missionCardWidth, backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.swipeImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="leaf-outline" size={28} color={colors.green} /></View><View style={styles.swipeCopy}><Text style={[styles.swipeType, { color: colors.green }]}>{item.type}</Text><MissionTitle compact color={colors.text}>{item.shortTitle}</MissionTitle><Text style={[styles.swipeMeta, { color: colors.muted }]}>{item.distance} · 약 {item.time}</Text></View><Text style={[styles.swipePointsText, { color: colors.orange }]}>{item.points}</Text></View>)}
+          {missionCards.map((item) => <View key={item.shortTitle} style={[styles.swipeCard, { width: missionCardWidth, backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.swipeImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="leaf-outline" size={28} color={colors.green} /></View><View style={styles.swipeCopy}><Text style={[styles.swipeType, { color: colors.greenInk }]}>{item.type}</Text><MissionTitle compact color={colors.text}>{item.shortTitle}</MissionTitle><Text style={[styles.swipeMeta, { color: colors.muted }]}>{item.distance} · 약 {item.time}</Text></View><Text style={[styles.swipePointsText, { color: colors.orange }]}>{item.points}</Text></View>)}
         </ScrollView>
         <View style={styles.dots}>{missionCards.map((item, index) => <View key={item.shortTitle} style={[styles.dot, { backgroundColor: colors.border }, index === activeMission && { backgroundColor: colors.green, width: 16 }]} />)}</View>
 
         <View style={[styles.progressCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.progressHeader}><View><Text style={[styles.progressEyebrow, { color: colors.muted }]}>COMMUNITY XP</Text><Text style={[styles.progressHeading, { color: colors.text }]}>이번 주 동네 기여도</Text></View><View style={styles.rankBadge}><Ionicons name="medal-outline" size={15} color="#ffd36a" /><Text style={styles.rankBadgeText}>GOLD</Text></View></View>
-          <View style={styles.progressBody}><ProgressRing colors={colors} /><View style={styles.progressCopy}><Text style={[styles.progressTitle, { color: colors.text }]}>조금만 더 하면 다음 배지예요</Text><Text style={[styles.progressDescription, { color: colors.muted }]}>이번 주 미션 3개를 완료했어요.</Text><View style={styles.progressStats}><View style={styles.progressStat}><Text style={[styles.progressStatValue, { color: colors.green }]}>+240</Text><Text style={[styles.progressStatLabel, { color: colors.muted }]}>이번 주 XP</Text></View><View style={styles.progressStat}><Text style={[styles.progressStatValue, { color: colors.green }]}>3개</Text><Text style={[styles.progressStatLabel, { color: colors.muted }]}>완료 미션</Text></View></View></View></View>
+          <View style={styles.progressHeader}><View><Text style={[styles.progressEyebrow, { color: colors.muted }]}>COMMUNITY XP</Text><Text style={[styles.progressHeading, { color: colors.text }]}>이번 주 동네 기여도</Text></View><View style={[styles.rankBadge, { backgroundColor: colors.goldSurface, borderColor: colors.goldBorder }]}><Ionicons name="medal-outline" size={15} color={colors.gold} /><Text style={[styles.rankBadgeText, { color: colors.gold }]}>GOLD</Text></View></View>
+          <View style={styles.progressBody}><ProgressRing colors={colors} /><View style={styles.progressCopy}><Text style={[styles.progressTitle, { color: colors.text }]}>조금만 더 하면 다음 배지예요</Text><Text style={[styles.progressDescription, { color: colors.muted }]}>이번 주 미션 3개를 완료했어요.</Text><View style={styles.progressStats}><View style={[styles.progressStat, { backgroundColor: colors.surfaceRaised }]}><Text style={[styles.progressStatValue, { color: colors.greenInk }]}>+240</Text><Text style={[styles.progressStatLabel, { color: colors.muted }]}>이번 주 XP</Text></View><View style={[styles.progressStat, { backgroundColor: colors.surfaceRaised }]}><Text style={[styles.progressStatValue, { color: colors.greenInk }]}>3개</Text><Text style={[styles.progressStatLabel, { color: colors.muted }]}>완료 미션</Text></View></View></View></View>
         </View>
 
-        <View style={[styles.surfaceCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={styles.sectionCardHeader}><View style={styles.sectionHeadingRow}><Ionicons name="business-outline" size={19} color={colors.green} /><Text style={[styles.surfaceTitle, { color: colors.text }]}>우리 동네 현황</Text></View><Text style={[styles.period, { color: colors.muted }]}>이번 주</Text></View><View style={[styles.metricGrid, { borderBottomColor: colors.border, borderTopColor: colors.border }]}>{neighborhoodMetrics.map((metric, index) => <View key={metric.label} style={[styles.metric, { borderRightColor: colors.border }, index === 3 && styles.metricLast]}><Ionicons name={metric.icon} size={21} color={colors[metric.color]} /><Text style={[styles.metricLabel, { color: colors.muted }]}>{metric.label}</Text><Text style={[styles.metricValue, { color: colors.text }]}>{metric.value}</Text></View>)}</View><Pressable style={styles.cardLinkRow} onPress={() => router.push("/community")}><Text style={[styles.cardLink, { color: colors.green }]}>동네 현황 더 보기</Text><Ionicons name="chevron-forward" size={16} color={colors.green} /></Pressable></View>
+        <View style={[styles.surfaceCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={styles.sectionCardHeader}><View style={styles.sectionHeadingRow}><Ionicons name="business-outline" size={19} color={colors.green} /><Text style={[styles.surfaceTitle, { color: colors.text }]}>우리 동네 현황</Text></View><Text style={[styles.period, { color: colors.muted }]}>이번 주</Text></View><View style={[styles.metricGrid, { borderBottomColor: colors.border, borderTopColor: colors.border }]}>{neighborhoodMetrics.map((metric, index) => <View key={metric.label} style={[styles.metric, { borderRightColor: colors.border }, index === 3 && styles.metricLast]}><Ionicons name={metric.icon} size={21} color={colors[metric.color]} /><Text style={[styles.metricLabel, { color: colors.muted }]}>{metric.label}</Text><Text style={[styles.metricValue, { color: colors.text }]}>{metric.value}</Text></View>)}</View><Pressable style={styles.cardLinkRow} onPress={() => router.push("/community")}><Text style={[styles.cardLink, { color: colors.greenInk }]}>동네 현황 더 보기</Text><Ionicons name="chevron-forward" size={16} color={colors.greenInk} /></Pressable></View>
 
-        <View style={[styles.surfaceCard, styles.dailyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.dailyImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="timer-outline" size={26} color={colors.green} /></View><View style={styles.dailyCopy}><Text style={[styles.dailyKicker, { color: colors.muted }]}>오늘의 3분 미션</Text><Text style={[styles.dailyTitle, { color: colors.text }]}>공원 안내판 상태 확인하기</Text><Text style={[styles.dailyMeta, { color: colors.green }]}>180m · 약 2분</Text></View><Pressable onPress={() => router.push("/mission")} style={[styles.startButton, { backgroundColor: colors.green }]}><Text style={styles.startButtonText}>시작하기</Text></Pressable></View>
+        <View style={[styles.surfaceCard, styles.dailyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.dailyImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="timer-outline" size={26} color={colors.green} /></View><View style={styles.dailyCopy}><Text style={[styles.dailyKicker, { color: colors.muted }]}>오늘의 3분 미션</Text><Text style={[styles.dailyTitle, { color: colors.text }]}>공원 안내판 상태 확인하기</Text><Text style={[styles.dailyMeta, { color: colors.greenInk }]}>180m · 약 2분</Text></View><Pressable onPress={() => router.push("/mission")} style={[styles.startButton, { backgroundColor: colors.green }]}><Text style={styles.startButtonText}>시작하기</Text></Pressable></View>
       </ScrollView>
     </View>
   );
@@ -103,18 +103,18 @@ const styles = StyleSheet.create({
   progressHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   progressEyebrow: { fontFamily: "WantedSansR", fontSize: 10, letterSpacing: 1 },
   progressHeading: { fontFamily: "WantedSansB", fontSize: 18, marginTop: 2 },
-  rankBadge: { alignItems: "center", backgroundColor: "#3c321f", borderColor: "#6f5927", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 5, paddingHorizontal: 9, paddingVertical: 6 },
-  rankBadgeText: { color: "#ffd36a", fontFamily: "WantedSansB", fontSize: 10 },
+  rankBadge: { alignItems: "center", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 5, paddingHorizontal: 9, paddingVertical: 6 },
+  rankBadgeText: { fontFamily: "WantedSansB", fontSize: 10 },
   progressBody: { alignItems: "center", flexDirection: "row", marginTop: 12 },
   progressRingWrap: { alignItems: "center", height: 104, justifyContent: "center", width: 104 },
   progressRingText: { alignItems: "center", position: "absolute" },
-  progressValue: { color: "#f5f5f5", fontFamily: "WantedSansB", fontSize: 28, lineHeight: 30 },
-  progressTotal: { color: "#a4a4a4", fontFamily: "WantedSansR", fontSize: 10 },
+  progressValue: { fontFamily: "WantedSansB", fontSize: 28, lineHeight: 30 },
+  progressTotal: { fontFamily: "WantedSansR", fontSize: 10 },
   progressCopy: { flex: 1, marginLeft: 14 },
   progressTitle: { fontFamily: "WantedSansB", fontSize: 14, lineHeight: 19 },
   progressDescription: { fontFamily: "WantedSansR", fontSize: 11, lineHeight: 16, marginTop: 4 },
   progressStats: { flexDirection: "row", gap: 10, marginTop: 9 },
-  progressStat: { backgroundColor: "#20251f", borderRadius: 10, minWidth: 72, paddingHorizontal: 8, paddingVertical: 6 },
+  progressStat: { borderRadius: 10, minWidth: 72, paddingHorizontal: 8, paddingVertical: 6 },
   progressStatValue: { fontFamily: "WantedSansB", fontSize: 14 },
   progressStatLabel: { fontFamily: "WantedSansR", fontSize: 9, marginTop: 1 },
   surfaceCard: { borderRadius: 16, borderWidth: 1, marginTop: 14, padding: 12 },

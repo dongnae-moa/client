@@ -21,6 +21,22 @@ import { runOnJS } from "react-native-worklets";
 import { useTheme } from "../theme/ThemeContext";
 
 const SPRING = { damping: 18, stiffness: 230, mass: 0.72 };
+const GLASS_HEIGHT = 76;
+const SHELL_TOP_PADDING = 8;
+const SHELL_BOTTOM_PADDING = 10;
+const MIN_BOTTOM_INSET = 8;
+
+/** 화면 하단에서 네비바가 실제로 덮는 높이. 전체 화면 콘텐츠(지도 등)의 여백 계산에 사용한다. */
+export function useNavBarHeight() {
+  const insets = useSafeAreaInsets();
+  return (
+    SHELL_TOP_PADDING +
+    GLASS_HEIGHT +
+    Math.max(insets.bottom, MIN_BOTTOM_INSET) +
+    SHELL_BOTTOM_PADDING
+  );
+}
+
 const TABS: Array<{
   label: string;
   path: Href;
@@ -28,12 +44,12 @@ const TABS: Array<{
   activeIcon: keyof typeof Ionicons.glyphMap;
 }> = [
   { label: "홈", path: "/", icon: "home-outline", activeIcon: "home" },
-  { label: "지도", path: "/map", icon: "map-outline", activeIcon: "map" },
   {
+    // 지도와 미션은 /mission 한 화면(지도 + 상단바 필터)으로 합쳐져 있다.
     label: "미션",
     path: "/mission",
-    icon: "checkmark-circle-outline",
-    activeIcon: "checkmark-circle",
+    icon: "map-outline",
+    activeIcon: "map",
   },
   {
     label: "커뮤니티",
@@ -87,55 +103,6 @@ function TabItem({
   );
 }
 
-function MissionTab({
-  focused,
-  onPress,
-}: {
-  focused: boolean;
-  onPress: () => void;
-}) {
-  const { colors } = useTheme();
-  const iconScale = useSharedValue(1);
-  const iconStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: iconScale.value }],
-  }));
-  return (
-    <View style={styles.itemSlot}>
-      <Pressable
-        accessibilityRole="tab"
-        accessibilityLabel="미션"
-        accessibilityState={{ selected: focused }}
-        onPress={onPress}
-        onPressIn={() => {
-          iconScale.value = withSpring(0.84, SPRING);
-        }}
-        onPressOut={() => {
-          iconScale.value = withSpring(1, SPRING);
-        }}
-        style={styles.itemPressable}
-      >
-        <View style={styles.missionButton}>
-          <Animated.View style={iconStyle}>
-            <Ionicons
-              name={focused ? "checkmark-circle" : "checkmark-circle-outline"}
-              size={25}
-              color={focused ? "#17310b" : colors.muted}
-            />
-          </Animated.View>
-          <Text
-            style={[
-              styles.missionLabel,
-              { color: focused ? "#17310b" : colors.muted },
-            ]}
-          >
-            미션
-          </Text>
-        </View>
-      </Pressable>
-    </View>
-  );
-}
-
 export default function FloatingNavBar() {
   const router = useRouter();
   const pathname = usePathname();
@@ -144,7 +111,9 @@ export default function FloatingNavBar() {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [contentWidth, setContentWidth] = useState(0);
   const matchedIndex = TABS.findIndex((tab) => pathname === tab.path);
-  const focusedIndex = pathname === "/settings" ? 4 : Math.max(0, matchedIndex);
+  // 설정은 마이페이지에서 열리는 별도 화면이라 마지막 탭(마이)을 선택 상태로 둔다.
+  const focusedIndex =
+    pathname === "/settings" ? TABS.length - 1 : Math.max(0, matchedIndex);
   const requestedIndex = useRef(focusedIndex);
   const indicatorIndex = useSharedValue(focusedIndex);
   const dragOffset = useSharedValue(0);
@@ -244,7 +213,13 @@ export default function FloatingNavBar() {
   if (keyboardVisible) return null;
   return (
     <View
-      style={[styles.shell, { paddingBottom: Math.max(insets.bottom, 8) + 10 }]}
+      style={[
+        styles.shell,
+        {
+          paddingBottom:
+            Math.max(insets.bottom, MIN_BOTTOM_INSET) + SHELL_BOTTOM_PADDING,
+        },
+      ]}
       pointerEvents="box-none"
     >
       <View
@@ -276,22 +251,14 @@ export default function FloatingNavBar() {
               ]}
               pointerEvents="none"
             />
-            {TABS.map((tab, index) =>
-              index === 2 ? (
-                <MissionTab
-                  key={tab.label}
-                  focused={focusedIndex === index}
-                  onPress={() => selectTab(index)}
-                />
-              ) : (
-                <TabItem
-                  key={tab.label}
-                  tab={tab}
-                  focused={focusedIndex === index}
-                  onPress={() => selectTab(index)}
-                />
-              ),
-            )}
+            {TABS.map((tab, index) => (
+              <TabItem
+                key={tab.label}
+                tab={tab}
+                focused={focusedIndex === index}
+                onPress={() => selectTab(index)}
+              />
+            ))}
           </View>
         </GestureDetector>
       </View>
@@ -308,10 +275,10 @@ const styles = StyleSheet.create({
     zIndex: 50,
     elevation: 20,
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: SHELL_TOP_PADDING,
   },
   glass: {
-    height: 76,
+    height: GLASS_HEIGHT,
     overflow: "visible",
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
@@ -395,19 +362,5 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
-  },
-  missionButton: {
-    width: 56,
-    height: 56,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 999,
-    backgroundColor: "transparent",
-  },
-  missionLabel: {
-    fontFamily: "WantedSansB",
-    fontSize: 9,
-    lineHeight: 11,
-    marginTop: -1,
   },
 });

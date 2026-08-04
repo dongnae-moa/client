@@ -13,10 +13,15 @@ export type AppTheme = {
     muted: string;
     faint: string;
     green: string;
+    /** 표면 위 텍스트/링크용 초록. green은 라이트 모드에서 본문 대비가 부족하다. */
+    greenInk: string;
     greenSoft: string;
     purple: string;
     blue: string;
     orange: string;
+    gold: string;
+    goldSurface: string;
+    goldBorder: string;
     navTint: string;
     navBorder: string;
     navIndicator: string;
@@ -35,10 +40,14 @@ const palettes = {
     muted: "#a4a4a4",
     faint: "#676767",
     green: "#a7e66d",
+    greenInk: "#a7e66d",
     greenSoft: "#c8f1a7",
     purple: "#b285ff",
     blue: "#72a7ff",
     orange: "#ffb93f",
+    gold: "#ffd36a",
+    goldSurface: "#3c321f",
+    goldBorder: "#6f5927",
     navTint: "rgba(3, 8, 18, 0.24)",
     navBorder: "rgba(255,255,255,0.22)",
     navIndicator: "rgba(255,255,255,0.15)",
@@ -52,10 +61,14 @@ const palettes = {
     muted: "#5d675e",
     faint: "#879188",
     green: "#77c84d",
+    greenInk: "#3f7a1f",
     greenSoft: "#d8f6bb",
     purple: "#7d5dcc",
     blue: "#3d78ce",
     orange: "#d28b0e",
+    gold: "#8a5a06",
+    goldSurface: "#fdf1d6",
+    goldBorder: "#e8cf9a",
     navTint: "rgba(245, 248, 244, 0.42)",
     navBorder: "rgba(255,255,255,0.78)",
     navIndicator: "rgba(255,255,255,0.68)",
