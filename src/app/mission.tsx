@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
+import { Image } from "expo-image";
 import { useFocusEffect } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -18,10 +19,12 @@ import MissionDetailSheet from "../components/MissionDetailSheet";
 import MissionFilterPanel from "../components/MissionFilterPanel";
 import MissionMap from "../components/MissionMap";
 import {
-  categories,
+  buildDummyMissions,
   countActiveFilters,
   DEFAULT_FILTERS,
   filterMissions,
+  statusFilters,
+  statusMeta,
   summarizeFilters,
   type MissionFilters,
 } from "../data/missions";
@@ -65,7 +68,13 @@ export default function MissionScreen() {
     chipsHeight +
     (noticeVisible ? noticeHeight : 0);
 
-  const missions = useMemo(() => filterMissions(filters), [filters]);
+  // 서버 연동 전까지는 더미 목록을 쓴다. 현재 위치를 기준점으로 넘겨 어디서 앱을 켜도
+  // 핀이 내 주변에 찍히게 한다. 실제 API를 붙이면 이 자리에 응답 데이터를 넣으면 된다.
+  const allMissions = useMemo(() => buildDummyMissions(origin), [origin]);
+  const missions = useMemo(
+    () => filterMissions(allMissions, filters),
+    [allMissions, filters],
+  );
   const activeFilterCount = countActiveFilters(filters);
   const selectedMission =
     missions.find((mission) => mission.id === selectedId) ?? null;
@@ -136,6 +145,7 @@ export default function MissionScreen() {
           {missions.length > 0 ? (
             missions.map((mission) => {
               const selected = selectedId === mission.id;
+              const status = statusMeta[mission.status];
               const titleSize =
                 mission.title.length > 25
                   ? 15
@@ -159,31 +169,47 @@ export default function MissionScreen() {
                       },
                     ]}
                   >
-                    <View
+                    <Image
+                      source={mission.imageUrl}
                       style={[
-                        styles.missionIcon,
-                        { backgroundColor: colors.greenSoft },
+                        styles.missionThumb,
+                        { backgroundColor: colors.surfaceRaised },
                       ]}
-                    >
-                      <Ionicons name={mission.icon} size={23} color="#17310b" />
-                    </View>
+                      contentFit="cover"
+                      transition={180}
+                      cachePolicy="memory-disk"
+                      accessibilityLabel={`${mission.title} 현장 사진`}
+                    />
                     <View style={styles.missionCopy}>
                       <View style={styles.missionTopline}>
-                        <Text
-                          style={[
-                            styles.missionCategory,
-                            { color: colors.greenInk },
-                          ]}
-                        >
-                          {mission.category} · {mission.difficulty}
-                        </Text>
+                        <View style={styles.missionStatus}>
+                          <Ionicons
+                            name={status.icon}
+                            size={12}
+                            color={
+                              status.tone === "orange"
+                                ? colors.orange
+                                : status.tone === "muted"
+                                  ? colors.faint
+                                  : colors.greenInk
+                            }
+                          />
+                          <Text
+                            style={[
+                              styles.missionCategory,
+                              { color: colors.greenInk },
+                            ]}
+                          >
+                            {status.label} · {mission.difficulty}
+                          </Text>
+                        </View>
                         <Text
                           style={[
                             styles.missionPoints,
                             { color: colors.orange },
                           ]}
                         >
-                          ★ {mission.points}P
+                          ★ {mission.rewardPoint}P
                         </Text>
                       </View>
                       <Text
@@ -202,8 +228,13 @@ export default function MissionScreen() {
                       <Text
                         style={[styles.missionMeta, { color: colors.muted }]}
                       >
-                        {mission.place} · {mission.distance}m · 약{" "}
-                        {mission.minutes}분
+                        {mission.neighborhood.name} · {mission.distanceMeters}m
+                        · 약 {mission.minutes}분
+                      </Text>
+                      <Text
+                        style={[styles.missionAuthor, { color: colors.faint }]}
+                      >
+                        {mission.authorNickname}님이 올린 미션
                       </Text>
                     </View>
                     <View
@@ -367,14 +398,14 @@ export default function MissionScreen() {
           onLayout={(event) => setChipsHeight(event.nativeEvent.layout.height)}
           contentContainerStyle={styles.categoryRow}
         >
-          {categories.map((category) => {
-            const selected = filters.category === category;
+          {statusFilters.map(({ value, label }) => {
+            const selected = filters.status === value;
             return (
               <Pressable
-                key={category}
+                key={value}
                 accessibilityRole="button"
                 accessibilityState={{ selected }}
-                onPress={() => updateFilters({ category })}
+                onPress={() => updateFilters({ status: value })}
                 style={({ pressed }) => [
                   styles.categoryChip,
                   {
@@ -390,7 +421,7 @@ export default function MissionScreen() {
                     { color: selected ? "#17310b" : colors.muted },
                   ]}
                 >
-                  {category}
+                  {label}
                 </Text>
               </Pressable>
             );
@@ -595,19 +626,14 @@ const styles = StyleSheet.create({
     minHeight: 106,
     padding: 13,
   },
-  missionIcon: {
-    alignItems: "center",
-    borderRadius: 15,
-    height: 52,
-    justifyContent: "center",
-    width: 52,
-  },
+  missionThumb: { borderRadius: 15, height: 62, width: 62 },
   missionCopy: { flex: 1, marginLeft: 12, minWidth: 0 },
   missionTopline: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
+  missionStatus: { alignItems: "center", flexDirection: "row", gap: 3 },
   missionCategory: { fontFamily: "WantedSansB", fontSize: 10 },
   missionPoints: { fontFamily: "WantedSansB", fontSize: 11 },
   missionTitle: {
@@ -616,6 +642,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   missionMeta: { fontFamily: "WantedSansR", fontSize: 10, marginTop: 5 },
+  missionAuthor: { fontFamily: "WantedSansR", fontSize: 9, marginTop: 3 },
   selectButton: {
     alignItems: "center",
     borderRadius: 999,

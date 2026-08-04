@@ -1,11 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
-import type { NearbyMission } from "../data/missions";
+import { statusMeta, type Mission } from "../data/missions";
 import { useTheme } from "../theme/ThemeContext";
 
 type MissionDetailSheetProps = {
-  mission: NearbyMission;
+  mission: Mission;
   /** 진행 중으로 표시된 미션인지. */
   started: boolean;
   onToggleStart: () => void;
@@ -32,6 +33,13 @@ export default function MissionDetailSheet({
 }: MissionDetailSheetProps) {
   const { colors } = useTheme();
   const titleSize = mission.title.length > 25 ? 17 : 19;
+  const status = statusMeta[mission.status];
+  const statusColor =
+    status.tone === "orange"
+      ? colors.orange
+      : status.tone === "muted"
+        ? colors.faint
+        : colors.greenInk;
 
   return (
     <Animated.View
@@ -54,13 +62,17 @@ export default function MissionDetailSheet({
           <View
             style={[styles.badge, { backgroundColor: colors.surfaceRaised }]}
           >
-            <Ionicons name={mission.icon} size={13} color={colors.green} />
+            <Ionicons name={status.icon} size={13} color={statusColor} />
+            <Text style={[styles.badgeText, { color: statusColor }]}>
+              {status.label}
+            </Text>
+            <Text style={[styles.badgeDivider, { color: colors.faint }]}>·</Text>
             <Text style={[styles.badgeText, { color: colors.muted }]}>
-              {mission.category} · {mission.difficulty}
+              {mission.difficulty}
             </Text>
           </View>
           <Text style={[styles.points, { color: colors.orange }]}>
-            ★ {mission.points}P
+            ★ {mission.rewardPoint}P
           </Text>
           <Pressable
             accessibilityRole="button"
@@ -83,6 +95,14 @@ export default function MissionDetailSheet({
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.body}
         >
+          <Image
+            source={mission.imageUrl}
+            style={[styles.hero, { backgroundColor: colors.surfaceRaised }]}
+            contentFit="cover"
+            transition={180}
+            cachePolicy="memory-disk"
+            accessibilityLabel={`${mission.title} 현장 사진`}
+          />
           <Text
             style={[
               styles.title,
@@ -98,15 +118,21 @@ export default function MissionDetailSheet({
           <View style={styles.metaRow}>
             <Ionicons name="location-outline" size={14} color={colors.greenInk} />
             <Text style={[styles.metaText, { color: colors.greenInk }]}>
-              {mission.place}
+              {mission.neighborhood.sigungu} {mission.neighborhood.name}
             </Text>
             <Text style={[styles.metaDivider, { color: colors.faint }]}>·</Text>
             <Text style={[styles.metaText, { color: colors.muted }]}>
-              {mission.distance}m · 약 {mission.minutes}분
+              {mission.distanceMeters}m · 약 {mission.minutes}분
+            </Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Ionicons name="person-circle-outline" size={14} color={colors.faint} />
+            <Text style={[styles.authorText, { color: colors.muted }]}>
+              {mission.authorNickname}님이 올린 미션
             </Text>
           </View>
           <Text style={[styles.summary, { color: colors.muted }]}>
-            {mission.summary}
+            {mission.description}
           </Text>
 
           <Text style={[styles.checkTitle, { color: colors.text }]}>
@@ -211,6 +237,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   badgeText: { fontFamily: "WantedSansB", fontSize: 10 },
+  badgeDivider: { fontFamily: "WantedSansR", fontSize: 10 },
   points: { flex: 1, fontFamily: "WantedSansB", fontSize: 12 },
   closeButton: {
     alignItems: "center",
@@ -220,6 +247,7 @@ const styles = StyleSheet.create({
     width: 28,
   },
   body: { paddingBottom: 4, paddingTop: 10 },
+  hero: { borderRadius: 14, height: 132, marginBottom: 11, width: "100%" },
   title: { fontFamily: "WantedSansB", letterSpacing: -0.5 },
   metaRow: {
     alignItems: "center",
@@ -229,6 +257,7 @@ const styles = StyleSheet.create({
   },
   metaText: { fontFamily: "WantedSansB", fontSize: 11 },
   metaDivider: { fontFamily: "WantedSansR", fontSize: 11 },
+  authorText: { fontFamily: "WantedSansR", fontSize: 11 },
   summary: { fontFamily: "WantedSansR", fontSize: 12, lineHeight: 18, marginTop: 9 },
   checkTitle: { fontFamily: "WantedSansB", fontSize: 12, marginTop: 14 },
   checkRow: {

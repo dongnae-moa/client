@@ -3,9 +3,9 @@ import Constants from "expo-constants";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
-import type { NearbyMission } from "../data/missions";
+import { statusMeta, type Mission } from "../data/missions";
 import { useTheme, type AppTheme, type ThemeMode } from "../theme/ThemeContext";
-import { destinationPoint, type Coords } from "../utils/geo";
+import type { Coords } from "../utils/geo";
 
 // 지도 스타일은 Google Cloud 콘솔의 Map ID로 관리한다(코드 내 customMapStyle과 함께 쓸 수 없다).
 // Map ID는 지도 생성 시점에만 적용되므로(MapManager.createViewInstance), 테마가 바뀌면
@@ -23,13 +23,13 @@ const MAP_ID_LIGHT =
 const FOCUS_ZOOM = 17;
 
 export type MissionPin = {
-  mission: NearbyMission;
+  mission: Mission;
   coordinate: Coords;
 };
 
 type MissionMapProps = {
-  missions: readonly NearbyMission[];
-  /** 미션 좌표를 계산할 기준점(보통 현재 위치). */
+  missions: readonly Mission[];
+  /** 위치를 아직 못 구했을 때 지도를 처음 띄울 기준점. */
   origin: Coords;
   userLocation: Coords | null;
   hasPermission: boolean;
@@ -61,13 +61,17 @@ export default function MissionMap({
   const centeredOnUser = useRef(false);
   const animatedFor = useRef<string | null>(null);
 
+  // 미션은 서버에서 받은 위경도를 그대로 쓴다.
   const pins = useMemo<MissionPin[]>(
     () =>
       missions.map((mission) => ({
         mission,
-        coordinate: destinationPoint(origin, mission.distance, mission.bearing),
+        coordinate: {
+          latitude: mission.latitude,
+          longitude: mission.longitude,
+        },
       })),
-    [missions, origin],
+    [missions],
   );
 
   // 정확한 위치가 처음 도착했을 때 한 번만 내 위치로 이동한다.
@@ -83,7 +87,7 @@ export default function MissionMap({
   // 핀을 고르면 그 핀을 화면 중앙(패딩 제외 영역)으로 옮긴다. 상세 시트 높이가
   // bottomPadding에 반영되므로 핀은 시트에 가려지지 않는 위치로 온다.
   //
-  // 정확한 위치가 늦게 도착하면 pins의 좌표가 갱신되는데, 그때 카메라가 다시 튀지 않도록
+  // 목록이 다시 내려와 pins가 갱신될 때 카메라가 또 튀지 않도록
   // "어떤 선택에 대해 이미 움직였는지"를 토큰으로 기억한다.
   const focusToken = selectedId ? `${selectedId}#${focusRequest}` : null;
   useEffect(() => {
@@ -223,6 +227,14 @@ function MissionMarker({
     return () => clearTimeout(timer);
   }, [mode, selected]);
 
+  const status = statusMeta[pin.mission.status];
+  // 상태별 강조색. 모집 중은 초록, 진행 중은 주황, 완료는 흐리게 둔다.
+  const accent =
+    status.tone === "orange"
+      ? colors.orange
+      : status.tone === "muted"
+        ? colors.faint
+        : colors.green;
   const fill = selected ? colors.green : colors.surface;
   return (
     <Marker
@@ -231,7 +243,7 @@ function MissionMarker({
       tracksViewChanges={tracking}
       anchor={{ x: 0.5, y: 1 }}
       zIndex={selected ? 2 : 1}
-      accessibilityLabel={`${pin.mission.title}, ${pin.mission.points}포인트`}
+      accessibilityLabel={`${pin.mission.title}, ${status.label}, ${pin.mission.rewardPoint}포인트`}
     >
       <View style={styles.pinWrap}>
         <View
@@ -239,15 +251,15 @@ function MissionMarker({
             styles.pin,
             {
               backgroundColor: fill,
-              borderColor: selected ? colors.green : colors.border,
+              borderColor: selected ? colors.green : accent,
             },
             selected && styles.pinSelected,
           ]}
         >
           <Ionicons
-            name={pin.mission.icon}
+            name={status.icon}
             size={selected ? 17 : 14}
-            color={selected ? "#17310b" : colors.green}
+            color={selected ? "#17310b" : accent}
           />
           <Text
             style={[
@@ -256,7 +268,7 @@ function MissionMarker({
               selected && styles.pinTextSelected,
             ]}
           >
-            {pin.mission.points}P
+            {pin.mission.rewardPoint}P
           </Text>
         </View>
         <View style={[styles.pinTail, { borderTopColor: fill }]} />
