@@ -14,28 +14,31 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ApiError } from "../api/client";
+import { createQuest } from "../api/quests";
+import { useCurrentLocation } from "../hooks/useCurrentLocation";
 import { useTheme } from "../theme/ThemeContext";
 
-export type MissionDraft = {
-  title: string;
-  description: string;
-  photoUri: string | null;
-};
+/** 업로드할 사진. ImagePicker가 준 정보를 그대로 들고 있는다. */
+type PickedPhoto = { uri: string; name: string; type: string };
 
 type MissionComposerProps = {
   visible: boolean;
   /** 등록 기준이 되는 동네 이름. 아직 정해지지 않았으면 비워둔다. */
   neighborhoodName?: string | null;
   onClose: () => void;
-  onSubmit: (draft: MissionDraft) => void;
+  /** 등록이 성공했을 때. 화면이 안내를 띄우거나 목록을 새로 불러오는 데 쓴다. */
+  onCreated: (title: string) => void;
 };
 
 /**
  * 미션 만들기 컴포저.
  *
  * 커뮤니티 글쓰기(community.tsx의 ComposerModal)와 같은 모달 방식이라 홈·미션 탭 어디서
- * 열어도 흐름이 같다. 서버에 미션 생성 API가 아직 없어서 `onSubmit`은 초안을 넘겨줄 뿐이고,
- * 실제 업로드는 API가 준비되면 그 자리에 붙이면 된다.
+ * 열어도 흐름이 같다. 등록은 `POST /v1/quests` multipart 요청으로 바로 보낸다.
+ *
+ * 위치는 서버가 요구하는 값이라 실제 좌표만 쓴다. 권한이 없어 좌표를 못 구했으면 기본 좌표로
+ * 대신 보내지 않고 등록을 막는다(엉뚱한 곳에 미션이 생기는 게 더 나쁘다).
  *
  * 예상 시간·포인트·난이도·체크포인트는 서버에서 AI가 채우는 값이라(`src/data/missions.ts`의
  * Mission 타입 참고) 여기서 입력받지 않는다.
@@ -44,22 +47,33 @@ export default function MissionComposer({
   visible,
   neighborhoodName,
   onClose,
-  onSubmit,
+  onCreated,
 }: MissionComposerProps) {
   const { colors } = useTheme();
+  // 모달이 열려 있을 때만 위치를 잡는다. 홈 탭에서 미리 권한을 묻지 않게 하려는 것이다.
+  const { coords, hasPermission, settled } = useCurrentLocation(visible);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<PickedPhoto | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = title.trim().length > 0 && description.trim().length > 0;
+  const canSubmit =
+    title.trim().length > 0 &&
+    description.trim().length > 0 &&
+    photo !== null &&
+    coords !== null &&
+    !submitting;
 
   const reset = () => {
     setTitle("");
     setDescription("");
-    setPhotoUri(null);
+    setPhoto(null);
+    setError(null);
   };
 
   const close = () => {
+    if (submitting) return;
     reset();
     onClose();
   };
@@ -70,17 +84,41 @@ export default function MissionComposer({
       allowsEditing: true,
       quality: 0.8,
     });
-    if (!result.canceled) setPhotoUri(result.assets[0].uri);
+    if (result.canceled) return;
+    const asset = result.assets[0];
+    setPhoto({
+      uri: asset.uri,
+      name: asset.fileName ?? `mission-${asset.uri.split("/").pop() ?? "photo.jpg"}`,
+      type: asset.mimeType ?? "image/jpeg",
+    });
   };
 
-  const submit = () => {
-    if (!canSubmit) return;
-    onSubmit({
-      title: title.trim(),
-      description: description.trim(),
-      photoUri,
-    });
-    reset();
+  const submit = async () => {
+    if (!canSubmit || !photo || !coords) return;
+    const createdTitle = title.trim();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await createQuest(
+        {
+          title: createdTitle,
+          description: description.trim(),
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+        },
+        photo,
+      );
+      reset();
+      onCreated(createdTitle);
+    } catch (requestError) {
+      setError(
+        requestError instanceof ApiError
+          ? requestError.message
+          : "미션을 등록하지 못했어요. 잠시 후 다시 시도해주세요.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -104,9 +142,11 @@ export default function MissionComposer({
             </Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: !canSubmit }}
+              accessibilityState={{ disabled: !canSubmit, busy: submitting }}
               disabled={!canSubmit}
-              onPress={submit}
+              onPress={() => {
+                void submit();
+              }}
               hitSlop={8}
             >
               <Text
@@ -115,7 +155,7 @@ export default function MissionComposer({
                   { color: canSubmit ? colors.green : colors.faint },
                 ]}
               >
-                등록
+                {submitting ? "등록 중" : "등록"}
               </Text>
             </Pressable>
           </View>
@@ -125,11 +165,13 @@ export default function MissionComposer({
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.body}
           >
-            <Text style={[styles.label, { color: colors.text }]}>현장 사진</Text>
-            {photoUri ? (
+            <Text style={[styles.label, { color: colors.text }]}>
+              현장 사진 <Text style={{ color: colors.orange }}>*</Text>
+            </Text>
+            {photo ? (
               <View style={styles.photoWrap}>
                 <Image
-                  source={photoUri}
+                  source={photo.uri}
                   style={styles.photo}
                   contentFit="cover"
                   transition={160}
@@ -137,7 +179,7 @@ export default function MissionComposer({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="사진 지우기"
-                  onPress={() => setPhotoUri(null)}
+                  onPress={() => setPhoto(null)}
                   style={styles.photoRemove}
                 >
                   <Ionicons name="close" size={16} color="#fff" />
@@ -167,7 +209,7 @@ export default function MissionComposer({
                   <Ionicons name="camera-outline" size={22} color={colors.green} />
                 </View>
                 <Text style={[styles.photoHint, { color: colors.muted }]}>
-                  현장 사진을 올리면 이웃이 상황을 더 빨리 알아봐요
+                  현장 사진은 필수예요. 상황이 보이는 사진을 한 장 올려주세요.
                 </Text>
               </Pressable>
             )}
@@ -208,14 +250,39 @@ export default function MissionComposer({
               ]}
             />
 
+            {/* 위치는 서버 필수값이라 상태를 그대로 보여준다. 못 구했으면 등록도 막힌다. */}
             <View style={styles.metaRow}>
-              <Ionicons name="location-outline" size={15} color={colors.greenInk} />
-              <Text style={[styles.metaText, { color: colors.greenInk }]}>
-                {neighborhoodName
-                  ? `${neighborhoodName} 기준으로 등록돼요`
-                  : "현재 위치를 기준으로 등록돼요"}
+              <Ionicons
+                name={coords ? "location" : "location-outline"}
+                size={15}
+                color={coords ? colors.greenInk : colors.orange}
+              />
+              <Text
+                style={[
+                  styles.metaText,
+                  { color: coords ? colors.greenInk : colors.orange },
+                ]}
+              >
+                {coords
+                  ? neighborhoodName
+                    ? `${neighborhoodName} · 현재 위치로 등록돼요`
+                    : "현재 위치로 등록돼요"
+                  : !settled
+                    ? "현재 위치를 확인하는 중이에요"
+                    : hasPermission
+                      ? "위치를 확인하지 못했어요. 잠시 후 다시 시도해주세요."
+                      : "위치 권한을 허용해야 미션을 등록할 수 있어요."}
               </Text>
             </View>
+
+            {error ? (
+              <Text
+                accessibilityRole="alert"
+                style={[styles.error, { color: colors.orange }]}
+              >
+                {error}
+              </Text>
+            ) : null}
 
             <View
               style={[
@@ -306,7 +373,8 @@ const styles = StyleSheet.create({
     gap: 5,
     marginTop: 16,
   },
-  metaText: { fontFamily: "WantedSansB", fontSize: 11 },
+  metaText: { flex: 1, fontFamily: "WantedSansB", fontSize: 11, lineHeight: 16 },
+  error: { fontFamily: "WantedSansB", fontSize: 11, lineHeight: 16, marginTop: 10 },
   aiNote: {
     alignItems: "flex-start",
     borderRadius: 14,

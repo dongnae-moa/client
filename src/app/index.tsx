@@ -116,9 +116,9 @@ export default function Index() {
         visible={composerOpen}
         neighborhoodName={user?.neighborhoodName}
         onClose={() => setComposerOpen(false)}
-        onSubmit={(draft) => {
+        onCreated={(title) => {
           setComposerOpen(false);
-          setCreatedNotice(`"${draft.title}" 미션을 등록 요청했어요.`);
+          setCreatedNotice(`"${title}" 미션을 등록했어요.`);
         }}
       />
     </View>

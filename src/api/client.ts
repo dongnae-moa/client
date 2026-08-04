@@ -71,7 +71,12 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const authenticated = options.authenticated !== false;
   const headers = new Headers(init.headers);
-  if (!headers.has("Content-Type") && init.body) headers.set("Content-Type", "application/json");
+  // multipart(FormData)일 때는 boundary가 들어간 Content-Type을 fetch가 직접 만들어야 하므로
+  // 여기서 손대지 않는다. 임의로 application/json을 붙이면 서버가 본문을 파싱하지 못한다.
+  const isMultipart = init.body instanceof FormData;
+  if (!headers.has("Content-Type") && init.body && !isMultipart) {
+    headers.set("Content-Type", "application/json");
+  }
   if (authenticated) {
     const token = authBridge?.getAccessToken();
     if (token) headers.set("Authorization", `Bearer ${token}`);
