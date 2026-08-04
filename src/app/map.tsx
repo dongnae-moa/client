@@ -1,5 +1,6 @@
 import { Image } from "expo-image";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import FloatingNavBar from "../components/FloatingNavBar";
 
 export default function Index() {
   return (
@@ -60,6 +61,7 @@ export default function Index() {
           <Text style={styles.moreMissionText}>미션 더보기</Text>
         </View>
       </ScrollView>
+      <FloatingNavBar />
     </View>
   );
 }

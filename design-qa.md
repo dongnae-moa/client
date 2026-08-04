@@ -2,35 +2,45 @@
 
 ## Evidence
 
-- Source visual truth: `C:\Users\krjih\AppData\Local\Temp\codex-clipboard-81728254-2bdc-4375-9a70-5a3e00f97699.png`
-- Implementation capture: `C:\Users\krjih\Documents\GEEKs\client\dongnae-home.png`
-- State: Android physical device, Expo Go SDK 57, home tab at the top of the scroll view
-- Source pixels: 530 x 1142 portrait
-- Implementation pixels: 1080 x 2340 portrait, Samsung SM-S911N, physical density 480 (360 x 780 dp)
-- Normalization: compared portrait composition and app-owned content after accounting for the device density and Expo Go development overlay
+- Source visual truth: `C:\Users\krjih\Downloads\Mobile Devices\Screenshot_20260804_214939_Expo Go.jpg`
+- Implementation capture: `C:\Users\krjih\Documents\GEEKs\client\dongnae-home-v2-top.png`
+- State: Android physical device `SM-S911N`, Expo Go SDK 57, home tab at the top of the scroll view
+- Source pixels: 1080 x 2197 portrait
+- Implementation pixels: 1080 x 2340 portrait, density 480 (360 x 780 dp)
+- Normalization: compared the app-owned portrait content after accounting for the source crop, Android system bars, density, and Expo Go development chrome
 
 ## Comparison
 
-The implementation keeps the reference hierarchy: one large recommended mission, a compact rank/progress state, a neighborhood status summary, one daily micro-mission, and four persistent bottom tabs. The dark surface, pale-green mission emphasis, colored status icons, rounded cards, and Korean display hierarchy are all present in the same order.
-
-The first pass allowed the daily mission card to sit behind the persistent tab bar. The card and tab bar were compacted, then re-captured; the daily mission image, title, reward, and CTA are now visible above the tab bar in the initial viewport.
+The updated implementation uses the supplied logo asset with safe-area top padding, removes the hamburger menu, and follows the reference hierarchy of `추천 미션` → one featured mission → a mission-card rail. The mission rail is horizontally swipable and uses the Notion `테스트 데이터` values for community order, accessibility, facility-check, and environment missions. The rank line was replaced with a circular `73/100` Community XP meter, and the provided liquid-glass camera-style navigation was adapted to the existing four routes.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: Wanted Sans regular/bold are used for the Korean hierarchy, with large display text reserved for the recommendation and section headings.
-- Spacing and layout rhythm: the top recommendation, rank state, neighborhood card, daily mission, and bottom navigation fit the initial 360 x 780 dp viewport without app-owned overflow.
-- Colors and visual tokens: black background, dark gray surfaces, pale-green primary CTA/card, green progress, and purple/blue/orange status accents match the supplied direction.
-- Image quality and asset fidelity: the existing project scooter photo is used for the daily mission; Ionicons supply the interface icons rather than hand-drawn shapes or glyph approximations.
-- Copy and content: the home uses one recommended mission and representative map/mission/my content instead of repeating the full mission list.
+- Fonts and typography: Wanted Sans regular/bold are used for Korean display hierarchy; H2-sized section labels are left-aligned and the previous centered greeting was removed.
+- Spacing and layout rhythm: safe-area padding keeps the logo below the device camera/status area; recommendation, swipe rail, progress card, community status, daily mission, and persistent navigation maintain clear vertical grouping.
+- Colors and visual tokens: black background, dark surfaces, pale-green recommendation, green ring progress, and Gold badge preserve the existing Dongnae-Moa direction while the liquid-glass bar adds the supplied translucent treatment.
+- Image quality and asset fidelity: `assets/images/로고임.png` is used for the real wordmark, `assets/images/omg.png` is reused for the Notion scooter dummy missions, and Ionicons provide interface icons.
+- Copy and content: mission titles, categories, times, points, and verification data are drawn from Notion `테스트 데이터`; no full repeated mission list is shown on the home screen.
 
 ## Primary interactions checked
 
 - Recommended mission card routes to `/mission`.
-- Rank/activity card routes to `/my`.
+- Horizontal mission rail snaps between four dummy cards and updates its position indicator.
+- Circular progress/activity card routes to `/my`.
 - Neighborhood status card routes to `/map`.
 - Daily mission card routes to `/mission`.
-- Bottom tabs retain the existing home/map/mission/my route structure.
-- Menu control exposes an accessible alert state for the current dummy-data build.
+- Liquid-glass bottom bar navigates home/map/mission/my; the mission tab uses the camera-style center treatment and supports horizontal tab swiping.
+
+## Comparison history
+
+1. Previous pass: the original dark home showed a centered greeting, a text-only logo, a straight rank line, and a flat four-item bottom bar.
+2. Fixes: replaced the logo with the supplied asset, added safe-area padding, removed the hamburger, added the Notion-backed swipable mission rail, changed progress to a circular 73/100 meter, and adapted `FloatingNavBar.tsx`.
+3. Post-fix evidence: `dongnae-home-v2-top.png` shows the logo fully visible, the recommendation and rail at the top, the 73/100 ring, and the new camera-style bottom navigation on the connected Android device.
+
+## Validation
+
+- `npx tsc --noEmit` passed.
+- `git diff --check` passed.
+- Expo Go physical-device render passed after wrapping the app in `GestureHandlerRootView`.
 
 ## Final result
 
