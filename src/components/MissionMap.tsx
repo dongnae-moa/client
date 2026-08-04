@@ -1,8 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, {
+  Marker,
+  PROVIDER_GOOGLE,
+  type MapPressEvent,
+} from "react-native-maps";
 import { statusMeta, type Mission } from "../data/missions";
 import { useTheme, type AppTheme, type ThemeMode } from "../theme/ThemeContext";
 import type { Coords } from "../utils/geo";
@@ -22,6 +26,16 @@ const MAP_ID_LIGHT =
 /** 선택된 핀으로 카메라를 옮길 때 쓰는 확대 수준. */
 const FOCUS_ZOOM = 17;
 
+/**
+ * 마커를 누른 직후 지도 탭을 무시하는 시간(ms).
+ *
+ * 마커 탭이 MapView의 onPress로도 올라오는 플랫폼이 있다. iOS(구글 지도)는 레거시 브릿지에서
+ * 이벤트가 버블링돼 `action: "marker-press"`로 구분할 수 있지만, 일부 Android 버전은 그냥
+ * `action: "press"`로 와서 지도 배경 탭과 구별되지 않는다(react-native-maps #5513).
+ * 그래서 action만 믿지 않고 "방금 마커를 눌렀는지"도 함께 본다.
+ */
+const MARKER_PRESS_GRACE_MS = 350;
+
 export type MissionPin = {
   mission: Mission;
   coordinate: Coords;
@@ -34,6 +48,8 @@ type MissionMapProps = {
   userLocation: Coords | null;
   hasPermission: boolean;
   selectedId: string | null;
+  /** 지도가 실제로 화면에 보이는지. 목록 뒤에 가려져 있으면 false. */
+  visible: boolean;
   /** 같은 미션이 이미 선택돼 있어도 카메라를 다시 맞추고 싶을 때 값을 올린다. */
   focusRequest: number;
   onSelectMission: (id: string) => void;
@@ -50,6 +66,7 @@ export default function MissionMap({
   userLocation,
   hasPermission,
   selectedId,
+  visible,
   focusRequest,
   onSelectMission,
   onPressMap,
@@ -60,6 +77,28 @@ export default function MissionMap({
   const mapRef = useRef<MapView>(null);
   const centeredOnUser = useRef(false);
   const animatedFor = useRef<string | null>(null);
+  const markerPressedAt = useRef(0);
+
+  const handleMarkerPress = useCallback(
+    (id: string) => {
+      markerPressedAt.current = Date.now();
+      onSelectMission(id);
+    },
+    [onSelectMission],
+  );
+
+  // 마커 탭이 지도 탭으로 새어 들어오면 방금 고른 미션이 곧바로 해제돼 상세가 열리지 않는다.
+  const handleMapPress = useCallback(
+    (event: MapPressEvent) => {
+      const native = event.nativeEvent as MapPressEvent["nativeEvent"] & {
+        id?: string;
+      };
+      if (native.action === "marker-press" || native.id) return;
+      if (Date.now() - markerPressedAt.current < MARKER_PRESS_GRACE_MS) return;
+      onPressMap();
+    },
+    [onPressMap],
+  );
 
   // 미션은 서버에서 받은 위경도를 그대로 쓴다.
   const pins = useMemo<MissionPin[]>(
@@ -115,7 +154,7 @@ export default function MissionMap({
       hasPermission={hasPermission}
       topPadding={topPadding}
       bottomPadding={bottomPadding}
-      onPressMap={onPressMap}
+      onPressMap={handleMapPress}
     >
       {pins.map((pin) => (
         <MissionMarker
@@ -124,7 +163,8 @@ export default function MissionMap({
           mode={mode}
           colors={colors}
           selected={pin.mission.id === selectedId}
-          onPress={() => onSelectMission(pin.mission.id)}
+          visible={visible}
+          onPress={() => handleMarkerPress(pin.mission.id)}
         />
       ))}
     </ThemedMap>
@@ -138,7 +178,7 @@ type ThemedMapProps = {
   hasPermission: boolean;
   topPadding: number;
   bottomPadding: number;
-  onPressMap: () => void;
+  onPressMap: (event: MapPressEvent) => void;
   children: React.ReactNode;
 };
 
@@ -205,27 +245,42 @@ function ThemedMap({
  *
  * `tracksViewChanges`를 계속 켜두면 커스텀 뷰 마커가 매 프레임 비트맵으로 다시 그려져
  * 지도 조작이 무거워진다. 그래서 마운트·선택·테마가 바뀐 직후 잠깐만 켜고 끈다.
+ *
+ * 다만 플래그를 다시 켜는 것만으로는 재래스터화가 보장되지 않는다. Android 구현은 내부
+ * 변경 카운터가 0이면 스냅샷을 만들지 않고 트래킹에서 빠지고, 그 뒤 플래그를 끌 때도
+ * "이미 비활성"이라 판단해 다시 그리지 않는다. 그래서 선택이 풀린 핀이 이전(선택된) 비트맵
+ * 그대로 남거나 깨져 보인다. `redraw()`는 이 게이팅을 건너뛰고 즉시 다시 그리므로 함께 호출한다.
+ *
+ * 목록 뒤에 가려져 있는 동안 일어난 변경도 눈에 보이지 않으니, 지도가 다시 보일 때
+ * (`visible`) 한 번 더 다시 그린다.
  */
 function MissionMarker({
   pin,
   mode,
   colors,
   selected,
+  visible,
   onPress,
 }: {
   pin: MissionPin;
   mode: ThemeMode;
   colors: AppTheme["colors"];
   selected: boolean;
+  visible: boolean;
   onPress: () => void;
 }) {
+  const markerRef = useRef<React.ComponentRef<typeof Marker>>(null);
   const [tracking, setTracking] = useState(true);
 
   useEffect(() => {
     setTracking(true);
-    const timer = setTimeout(() => setTracking(false), 700);
+    markerRef.current?.redraw();
+    const timer = setTimeout(() => {
+      markerRef.current?.redraw();
+      setTracking(false);
+    }, 700);
     return () => clearTimeout(timer);
-  }, [mode, selected]);
+  }, [mode, selected, visible]);
 
   const status = statusMeta[pin.mission.status];
   // 상태별 강조색. 모집 중은 초록, 진행 중은 주황, 완료는 흐리게 둔다.
@@ -238,6 +293,7 @@ function MissionMarker({
   const fill = selected ? colors.green : colors.surface;
   return (
     <Marker
+      ref={markerRef}
       coordinate={pin.coordinate}
       onPress={onPress}
       tracksViewChanges={tracking}

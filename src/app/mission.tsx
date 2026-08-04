@@ -95,6 +95,17 @@ export default function MissionScreen() {
     setSelectedId(id);
   }, []);
 
+  // 목록에서 지도로 돌아올 때는 선택해둔 핀을 다시 화면 중앙으로 맞춘다. 목록에 가려진
+  // 동안에도 지도는 계속 살아 있어서, 카메라를 옮겨두지 않으면 엉뚱한 곳이 보인다.
+  const toggleViewMode = useCallback(() => {
+    if (viewMode === "map") {
+      setViewMode("list");
+      return;
+    }
+    setViewMode("map");
+    setFocusRequest((current) => current + 1);
+  }, [viewMode]);
+
   const sheetReserved = selectedMission ? sheetHeight + 8 : 0;
   // 지도 컨트롤과 카메라 중심이 상단바·네비바·상세 시트를 피하도록 패딩으로 알려준다.
   const mapBottomPadding = navBarHeight + sheetReserved + MAP_CONTROL_GAP;
@@ -110,6 +121,7 @@ export default function MissionScreen() {
           userLocation={coords}
           hasPermission={hasPermission}
           selectedId={selectedId}
+          visible={viewMode === "map"}
           focusRequest={focusRequest}
           onSelectMission={selectMission}
           onPressMap={() => {
@@ -374,9 +386,7 @@ export default function MissionScreen() {
             accessibilityLabel={
               viewMode === "map" ? "목록으로 보기" : "지도로 보기"
             }
-            onPress={() =>
-              setViewMode((current) => (current === "map" ? "list" : "map"))
-            }
+            onPress={toggleViewMode}
             style={({ pressed }) => [
               styles.iconButton,
               { backgroundColor: colors.surface, borderColor: colors.border },
