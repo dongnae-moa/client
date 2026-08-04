@@ -5,9 +5,9 @@ import type { CurrentUser, RewardItem, RewardRedemption } from "./types";
 const CATALOG: RewardItem[] = [
   { id: 4, code: "LEAF_FRAME", type: "PROFILE_DECORATION", title: "나뭇잎 프로필 테두리", description: "동네를 푸르게 만든 참여를 프로필에서 보여주세요.", terms: "구매 후 마이페이지의 내 혜택에서 바로 적용할 수 있어요.", sponsorName: "동네모아", pointPrice: 200, remainingStock: null, monthlyLimit: 1000, status: "AVAILABLE", demoOnly: true, decorationKey: "leaf-frame" },
   { id: 3, code: "LOCAL_SIZEUP", type: "LOCAL_COUPON", title: "동네 가게 무료 사이즈업", description: "제휴 음료 매장에서 한 단계 큰 사이즈를 선택해요.", terms: "발표용 데모 혜택이며 실제 결제에는 적용되지 않아요.", sponsorName: "우리동네 카페연합", pointPrice: 220, remainingStock: 30, monthlyLimit: 160, status: "AVAILABLE", demoOnly: true, decorationKey: null },
-  { id: 2, code: "LOCAL_CAFE_10", type: "LOCAL_COUPON", title: "동네 카페 10% 할인", description: "서초동 제휴 카페에서 사용할 수 있는 지역 상권 혜택이에요.", terms: "발표용 데모 혜택이며 실제 결제에는 적용되지 않아요.", sponsorName: "서초동네상권", pointPrice: 350, remainingStock: 24, monthlyLimit: 120, status: "AVAILABLE", demoOnly: true, decorationKey: null },
+  { id: 2, code: "LOCAL_CAFE_10", type: "LOCAL_COUPON", title: "스타벅스 10% 할인", description: "서초동 스타벅스에서 사용할 수 있는 발표용 지역 제휴 혜택이에요.", terms: "발표용 데모 혜택이며 실제 결제에는 적용되지 않아요.", sponsorName: "스타벅스 서초동점", pointPrice: 350, remainingStock: 24, monthlyLimit: 120, status: "AVAILABLE", demoOnly: true, decorationKey: null },
   { id: 5, code: "COMMUNITY_BADGE", type: "PROFILE_DECORATION", title: "Community Hero 한정 배지", description: "Community XP에 기여한 주민을 위한 한정 프로필 장식이에요.", terms: "구매 후 마이페이지의 내 혜택에서 바로 적용할 수 있어요.", sponsorName: "동네모아", pointPrice: 500, remainingStock: 12, monthlyLimit: 50, status: "AVAILABLE", demoOnly: true, decorationKey: "community-hero" },
-  { id: 1, code: "CONVENIENCE_3000", type: "GIFTICON", title: "편의점 3천원 기프티콘", description: "미션으로 모은 포인트를 생활 속 작은 혜택으로 바꿔요.", terms: "발표용 데모 코드이며 실제 매장에서는 사용할 수 없어요.", sponsorName: "그린웨이브 CSR", pointPrice: 900, remainingStock: 8, monthlyLimit: 40, status: "AVAILABLE", demoOnly: true, decorationKey: null },
+  { id: 1, code: "CONVENIENCE_3000", type: "GIFTICON", title: "CU 3천원 모바일 상품권", description: "미션으로 모은 포인트를 생활 속 작은 혜택으로 바꿔요.", terms: "발표용 데모 코드이며 실제 매장에서는 사용할 수 없어요.", sponsorName: "CU 그린웨이브 CSR", pointPrice: 900, remainingStock: 8, monthlyLimit: 40, status: "AVAILABLE", demoOnly: true, decorationKey: null },
 ];
 
 type DemoRewardState = {

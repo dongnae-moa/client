@@ -34,9 +34,10 @@ export default function Index() {
   const router = useRouter();
   const { colors, mode } = useTheme();
   const { width } = useWindowDimensions();
-  const [activeMission, setActiveMission] = useState(0);
+  const [activeOtherMission, setActiveOtherMission] = useState(0);
   const missionCardWidth = Math.min(width - 40, 320);
-  const mission = missionCards[activeMission];
+  const recommendedMission = missionCards[0];
+  const otherMissions = missionCards.slice(1);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -48,27 +49,27 @@ export default function Index() {
 
         <View style={[styles.recommendedCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.recommendedImageWrap}>
-            <Image source={require("@/assets/images/omg.png")} style={styles.recommendedImage} contentFit="cover" transition={160} />
-            <View style={styles.imageTopRow}><View style={styles.photoBadge}><Ionicons name="navigate" size={13} color="#17310b" /><Text style={styles.photoBadgeText}>내 주변 {mission.distance}</Text></View><View style={styles.pointBadge}><Ionicons name="star" size={13} color="#17310b" /><Text style={styles.pointBadgeText}>{mission.points}</Text></View></View>
+            <Image source={recommendedMission.image} style={styles.recommendedImage} contentFit="cover" transition={160} />
+            <View style={styles.imageTopRow}><View style={styles.photoBadge}><Ionicons name="navigate" size={13} color="#17310b" /><Text style={styles.photoBadgeText}>내 주변 {recommendedMission.distance}</Text></View><View style={styles.pointBadge}><Ionicons name="star" size={13} color="#17310b" /><Text style={styles.pointBadgeText}>{recommendedMission.points}</Text></View></View>
             <View style={styles.photoCaption}><Ionicons name="camera-outline" size={12} color="#fff" /><Text style={styles.photoCaptionText}>현장 사진</Text></View>
           </View>
           <View style={styles.recommendedCopy}>
-            <View style={styles.cardEyebrowRow}><Text style={[styles.cardEyebrow, { color: colors.green }]}>추천 미션</Text><Text style={[styles.recommendedType, { color: colors.muted }]}>{mission.type}</Text></View>
-            <MissionTitle color={colors.text}>{mission.shortTitle}</MissionTitle>
-            <Text style={[styles.recommendedMeta, { color: colors.muted }]}>{mission.time} · temp_username 제안</Text>
+            <View style={styles.cardEyebrowRow}><Text style={[styles.cardEyebrow, { color: colors.green }]}>가장 잘 맞는 추천 미션</Text><Text style={[styles.recommendedType, { color: colors.muted }]}>{recommendedMission.type}</Text></View>
+            <MissionTitle color={colors.text}>{recommendedMission.shortTitle}</MissionTitle>
+            <Text style={[styles.recommendedMeta, { color: colors.muted }]}>{recommendedMission.time} · 이동 동선과 관심사를 반영했어요</Text>
             <Pressable style={({ pressed }) => [styles.primaryButton, { backgroundColor: colors.green }, pressed && styles.pressed]} onPress={() => router.push("/mission")}><Text style={styles.primaryButtonText}>미션 살펴보기</Text><Ionicons name="arrow-forward" size={18} color="#17310b" /></Pressable>
           </View>
         </View>
 
         <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>다른 미션</Text><Text style={[styles.sectionHint, { color: colors.muted }]}>옆으로 넘겨보세요</Text></View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={missionCardWidth + 12} decelerationRate="fast" contentContainerStyle={styles.missionRail} onMomentumScrollEnd={(event) => setActiveMission(Math.round(event.nativeEvent.contentOffset.x / (missionCardWidth + 12)) % missionCards.length)}>
-          {missionCards.map((item) => <View key={item.shortTitle} style={[styles.swipeCard, { width: missionCardWidth, backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.swipeImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="leaf-outline" size={28} color={colors.green} /></View><View style={styles.swipeCopy}><Text style={[styles.swipeType, { color: colors.greenInk }]}>{item.type}</Text><MissionTitle compact color={colors.text}>{item.shortTitle}</MissionTitle><Text style={[styles.swipeMeta, { color: colors.muted }]}>{item.distance} · 약 {item.time}</Text></View><Text style={[styles.swipePointsText, { color: colors.orange }]}>{item.points}</Text></View>)}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={missionCardWidth + 12} decelerationRate="fast" contentContainerStyle={styles.missionRail} onMomentumScrollEnd={(event) => setActiveOtherMission(Math.min(otherMissions.length - 1, Math.round(event.nativeEvent.contentOffset.x / (missionCardWidth + 12))))}>
+          {otherMissions.map((item) => <View key={item.shortTitle} style={[styles.swipeCard, { width: missionCardWidth, backgroundColor: colors.surface, borderColor: colors.border }]}><Image source={item.image} style={[styles.swipeImage, { backgroundColor: colors.greenSoft }]} contentFit="cover" transition={160} /><View style={styles.swipeCopy}><Text style={[styles.swipeType, { color: colors.greenInk }]}>{item.type}</Text><MissionTitle compact color={colors.text}>{item.shortTitle}</MissionTitle><Text style={[styles.swipeMeta, { color: colors.muted }]}>{item.distance} · 약 {item.time}</Text></View><Text style={[styles.swipePointsText, { color: colors.orange }]}>{item.points}</Text></View>)}
         </ScrollView>
-        <View style={styles.dots}>{missionCards.map((item, index) => <View key={item.shortTitle} style={[styles.dot, { backgroundColor: colors.border }, index === activeMission && { backgroundColor: colors.green, width: 16 }]} />)}</View>
+        <View style={styles.dots}>{otherMissions.map((item, index) => <View key={item.shortTitle} style={[styles.dot, { backgroundColor: colors.border }, index === activeOtherMission && { backgroundColor: colors.green, width: 16 }]} />)}</View>
 
         <View style={[styles.progressCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.progressHeader}><View><Text style={[styles.progressEyebrow, { color: colors.muted }]}>COMMUNITY XP</Text><Text style={[styles.progressHeading, { color: colors.text }]}>이번 주 동네 기여도</Text></View><View style={[styles.rankBadge, { backgroundColor: colors.goldSurface, borderColor: colors.goldBorder }]}><Ionicons name="medal-outline" size={15} color={colors.gold} /><Text style={[styles.rankBadgeText, { color: colors.gold }]}>GOLD</Text></View></View>
-          <View style={styles.progressBody}><ProgressRing colors={colors} /><View style={styles.progressCopy}><Text style={[styles.progressTitle, { color: colors.text }]}>조금만 더 하면 다음 배지예요</Text><Text style={[styles.progressDescription, { color: colors.muted }]}>이번 주 미션 3개를 완료했어요.</Text><View style={styles.progressStats}><View style={[styles.progressStat, { backgroundColor: colors.surfaceRaised }]}><Text style={[styles.progressStatValue, { color: colors.greenInk }]}>+240</Text><Text style={[styles.progressStatLabel, { color: colors.muted }]}>이번 주 XP</Text></View><View style={[styles.progressStat, { backgroundColor: colors.surfaceRaised }]}><Text style={[styles.progressStatValue, { color: colors.greenInk }]}>3개</Text><Text style={[styles.progressStatLabel, { color: colors.muted }]}>완료 미션</Text></View></View></View></View>
+          <View style={styles.progressHeader}><View><Text style={[styles.progressEyebrow, { color: colors.muted }]}>COMMUNITY XP · 동네 성장</Text><Text style={[styles.progressHeading, { color: colors.text }]}>서초2동 레벨 7</Text></View><View style={[styles.communityBadge, { backgroundColor: colors.greenSoft }]}><Ionicons name="people" size={15} color={colors.greenInk} /><Text style={[styles.communityBadgeText, { color: colors.greenInk }]}>주민 공동</Text></View></View>
+          <View style={styles.progressBody}><ProgressRing colors={colors} /><View style={styles.progressCopy}><Text style={[styles.progressTitle, { color: colors.text }]}>동네 레벨 8까지 27 XP</Text><Text style={[styles.progressDescription, { color: colors.muted }]}>주민 83명의 활동이 함께 쌓여요.</Text><View style={[styles.personalXpCard, { backgroundColor: colors.surfaceRaised }]}><View><Text style={[styles.personalXpEyebrow, { color: colors.muted }]}>PERSONAL XP · 나의 성장</Text><Text style={[styles.personalXpTitle, { color: colors.text }]}>개인 레벨 12 · Gold</Text></View><View style={styles.personalXpValue}><Text style={[styles.personalXpNumber, { color: colors.purple }]}>240</Text><Text style={[styles.personalXpTotal, { color: colors.muted }]}>/300 XP</Text></View></View></View></View>
         </View>
 
         <View style={[styles.surfaceCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={styles.sectionCardHeader}><View style={styles.sectionHeadingRow}><Ionicons name="business-outline" size={19} color={colors.green} /><Text style={[styles.surfaceTitle, { color: colors.text }]}>우리 동네 현황</Text></View><Text style={[styles.period, { color: colors.muted }]}>이번 주</Text></View><View style={[styles.metricGrid, { borderBottomColor: colors.border, borderTopColor: colors.border }]}>{neighborhoodMetrics.map((metric, index) => <View key={metric.label} style={[styles.metric, { borderRightColor: colors.border }, index === 3 && styles.metricLast]}><Ionicons name={metric.icon} size={21} color={colors[metric.color]} /><Text style={[styles.metricLabel, { color: colors.muted }]}>{metric.label}</Text><Text style={[styles.metricValue, { color: colors.text }]}>{metric.value}</Text></View>)}</View><Pressable style={styles.cardLinkRow} onPress={() => router.push("/community")}><Text style={[styles.cardLink, { color: colors.greenInk }]}>동네 현황 더 보기</Text><Ionicons name="chevron-forward" size={16} color={colors.greenInk} /></Pressable></View>
@@ -120,8 +121,8 @@ const styles = StyleSheet.create({
   progressHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   progressEyebrow: { fontFamily: "WantedSansR", fontSize: 10, letterSpacing: 1 },
   progressHeading: { fontFamily: "WantedSansB", fontSize: 18, marginTop: 2 },
-  rankBadge: { alignItems: "center", borderRadius: 999, borderWidth: 1, flexDirection: "row", gap: 5, paddingHorizontal: 9, paddingVertical: 6 },
-  rankBadgeText: { fontFamily: "WantedSansB", fontSize: 10 },
+  communityBadge: { alignItems: "center", borderRadius: 999, flexDirection: "row", gap: 5, paddingHorizontal: 9, paddingVertical: 6 },
+  communityBadgeText: { fontFamily: "WantedSansB", fontSize: 10 },
   progressBody: { alignItems: "center", flexDirection: "row", marginTop: 12 },
   progressRingWrap: { alignItems: "center", height: 104, justifyContent: "center", width: 104 },
   progressRingText: { alignItems: "center", position: "absolute" },
@@ -130,10 +131,12 @@ const styles = StyleSheet.create({
   progressCopy: { flex: 1, marginLeft: 14 },
   progressTitle: { fontFamily: "WantedSansB", fontSize: 14, lineHeight: 19 },
   progressDescription: { fontFamily: "WantedSansR", fontSize: 11, lineHeight: 16, marginTop: 4 },
-  progressStats: { flexDirection: "row", gap: 10, marginTop: 9 },
-  progressStat: { borderRadius: 10, minWidth: 72, paddingHorizontal: 8, paddingVertical: 6 },
-  progressStatValue: { fontFamily: "WantedSansB", fontSize: 14 },
-  progressStatLabel: { fontFamily: "WantedSansR", fontSize: 9, marginTop: 1 },
+  personalXpCard: { alignItems: "center", borderRadius: 12, flexDirection: "row", justifyContent: "space-between", marginTop: 10, padding: 9 },
+  personalXpEyebrow: { fontFamily: "WantedSansR", fontSize: 8, letterSpacing: 0.4 },
+  personalXpTitle: { fontFamily: "WantedSansB", fontSize: 11, marginTop: 3 },
+  personalXpValue: { alignItems: "flex-end", marginLeft: 8 },
+  personalXpNumber: { fontFamily: "WantedSansB", fontSize: 16 },
+  personalXpTotal: { fontFamily: "WantedSansR", fontSize: 8 },
   surfaceCard: { borderRadius: 16, borderWidth: 1, marginTop: 14, padding: 12 },
   sectionCardHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   sectionHeadingRow: { alignItems: "center", flexDirection: "row", gap: 8 },

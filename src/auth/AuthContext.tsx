@@ -84,6 +84,20 @@ function sessionToUser(session: AuthSession, email = ""): CurrentUser {
   };
 }
 
+function mergeUserWithLocalSnapshot(nextUser: CurrentUser, previousUser: CurrentUser | null) {
+  if (!previousUser || previousUser.userId !== nextUser.userId) return nextUser;
+
+  return {
+    ...previousUser,
+    ...nextUser,
+    email: nextUser.email || previousUser.email,
+    nickname: nextUser.nickname || previousUser.nickname,
+    neighborhoodId: nextUser.neighborhoodId ?? previousUser.neighborhoodId ?? null,
+    neighborhoodName: nextUser.neighborhoodName ?? previousUser.neighborhoodName ?? null,
+    profileDecorationKey: nextUser.profileDecorationKey ?? previousUser.profileDecorationKey ?? null,
+  };
+}
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const [phase, setPhase] = useState<AppPhase>("booting");
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -130,7 +144,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       accessTokenRef.current = session.accessToken;
       refreshTokenRef.current = session.refreshToken ?? null;
       await Promise.all([writeAccessToken(session.accessToken), writeRefreshToken(session.refreshToken ?? null)]);
-      await storeUser(sessionToUser(session, userRef.current?.email ?? ""));
+      await storeUser(mergeUserWithLocalSnapshot(
+        sessionToUser(session, userRef.current?.email ?? ""),
+        userRef.current,
+      ));
       return session.accessToken;
     } catch {
       await clearSession();
@@ -147,9 +164,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const refreshProfile = useCallback(async () => {
     try {
       const current = await apiRequest<CurrentUser>("/v1/users/me", {}, { handleUnauthorized: false });
-      await storeUser(current);
-      setPhase(current.neighborhoodId ? "authenticated" : "needsNeighborhood");
-      return current;
+      const merged = mergeUserWithLocalSnapshot(current, userRef.current);
+      await storeUser(merged);
+      setPhase(merged.neighborhoodId ? "authenticated" : "needsNeighborhood");
+      return merged;
     } catch (error) {
       if (error instanceof ApiError && [401, 403, 404, 405].includes(error.status) && userRef.current) return userRef.current;
       throw error;
@@ -175,6 +193,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         return;
       }
       if (storedToken) {
+        if (storedUser) await storeUser(storedUser);
         refreshTokenRef.current = storedToken;
         const accessToken = await refreshAccessToken();
         if (!active) return;

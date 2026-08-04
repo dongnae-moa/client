@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import Animated, { cancelAnimation, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { ApiError } from "../api/client";
@@ -24,6 +26,12 @@ const rewardVisuals: Record<RewardType, { icon: keyof typeof Ionicons.glyphMap; 
   LOCAL_COUPON: { icon: "storefront-outline", tint: "#8b72e8" },
   PROFILE_DECORATION: { icon: "leaf-outline", tint: "#77c84d" },
 };
+
+function rewardImage(reward: RewardItem) {
+  if (reward.code === "CONVENIENCE_3000") return require("@/assets/images/rewards/cu-3000.jpg");
+  if (reward.code === "LOCAL_CAFE_10") return require("@/assets/images/rewards/starbucks.png");
+  return null;
+}
 
 export default function StoreScreen() {
   const router = useRouter();
@@ -85,7 +93,6 @@ export default function StoreScreen() {
           <View style={styles.balanceCopy}>
             <Text style={[styles.balanceLabel, { color: colors.muted }]}>사용 가능한 미션 포인트</Text>
             <Text style={[styles.balanceValue, { color: colors.text }]}>{balance.toLocaleString()} <Text style={[styles.balanceUnit, { color: colors.green }]}>P</Text></Text>
-            <Text style={[styles.balanceHint, { color: colors.muted }]}>현금 환전 없이 원하는 혜택으로 바꿔요.</Text>
           </View>
           <View style={[styles.balanceIcon, { backgroundColor: colors.greenSoft }]}><Ionicons name="sparkles" size={26} color={colors.green} /></View>
         </View>
@@ -123,16 +130,30 @@ function RewardCard({ reward, balance, onPress }: { reward: RewardItem; balance:
   const { colors } = useTheme();
   const visual = rewardVisuals[reward.type];
   const soldOut = reward.status !== "AVAILABLE" || reward.remainingStock === 0;
+  const image = rewardImage(reward);
+  const limited = reward.code === "COMMUNITY_BADGE";
+  const glow = useSharedValue(0);
+  useEffect(() => {
+    glow.value = withRepeat(withTiming(1, { duration: 1300 }), -1, true);
+    return () => cancelAnimation(glow);
+  }, [glow]);
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: 0.35 + glow.value * 0.55,
+    transform: [{ scale: 0.99 + glow.value * 0.025 }],
+  }));
   return (
-    <Pressable disabled={soldOut} onPress={onPress} style={({ pressed }) => [styles.rewardCard, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed, soldOut && styles.soldOut]}>
-      <View style={[styles.rewardIcon, { backgroundColor: visual.tint + "22" }]}><Ionicons name={visual.icon} size={26} color={visual.tint} /></View>
+    <View style={styles.rewardFrame}>
+      {limited ? <Animated.View pointerEvents="none" style={[styles.limitedGlow, { borderColor: colors.green, shadowColor: colors.green }, glowStyle]} /> : null}
+      <Pressable disabled={soldOut} onPress={onPress} style={({ pressed }) => [styles.rewardCard, { backgroundColor: colors.surface, borderColor: limited ? colors.green : colors.border }, pressed && styles.pressed, soldOut && styles.soldOut]}>
+      {image ? <View style={[styles.rewardImageWrap, { backgroundColor: colors.surfaceRaised }]}><Image source={image} style={styles.rewardImage} contentFit="contain" transition={160} /></View> : <View style={[styles.rewardIcon, { backgroundColor: visual.tint + "22" }]}><Ionicons name={limited ? "ribbon" : visual.icon} size={limited ? 29 : 26} color={visual.tint} />{limited ? <View style={[styles.sparkleDot, { backgroundColor: colors.green }]} /> : null}</View>}
       <View style={styles.rewardCopy}>
-        <View style={styles.rewardTop}><Text style={[styles.rewardType, { color: colors.green }]}>{typeLabel(reward.type)}</Text><Text style={[styles.rewardStock, { color: colors.muted }]}>{reward.remainingStock == null ? "상시 교환" : soldOut ? "품절" : `${reward.remainingStock}개 남음`}</Text></View>
+        <View style={styles.rewardTop}><View style={styles.rewardLabelRow}><Text style={[styles.rewardType, { color: colors.green }]}>{typeLabel(reward.type)}</Text>{limited ? <View style={[styles.limitedPill, { backgroundColor: colors.green }]}><Ionicons name="sparkles" size={9} color="#17310b" /><Text style={styles.limitedPillText}>LIMITED</Text></View> : null}</View><Text style={[styles.rewardStock, { color: limited ? colors.orange : colors.muted }]}>{reward.remainingStock == null ? "상시 교환" : soldOut ? "품절" : `${reward.remainingStock}개 남음`}</Text></View>
         <Text numberOfLines={2} style={[styles.rewardTitle, { color: colors.text }]}>{reward.title}</Text>
         <Text numberOfLines={2} style={[styles.rewardDescription, { color: colors.muted }]}>{reward.description}</Text>
         <View style={styles.rewardBottom}><Text style={[styles.sponsor, { color: colors.muted }]}>{reward.sponsorName}</Text><Text style={[styles.rewardPrice, { color: balance >= reward.pointPrice ? colors.text : colors.orange }]}>{reward.pointPrice.toLocaleString()} P</Text></View>
       </View>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 
@@ -140,12 +161,13 @@ function RewardDetail({ reward, balance, error, loading, onClose, onRedeem }: { 
   const { colors, mode } = useTheme();
   if (!reward) return null;
   const visual = rewardVisuals[reward.type];
+  const image = rewardImage(reward);
   const insufficient = balance < reward.pointPrice;
   return (
     <Modal animationType="slide" transparent visible onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.modalBackdrop}><Pressable style={StyleSheet.absoluteFill} onPress={onClose} /><SafeAreaView edges={["bottom"]} style={[styles.sheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.sheetHandleWrap}><View style={[styles.sheetHandle, { backgroundColor: colors.border }]} /></View>
-        <View style={styles.sheetHeader}><View style={[styles.sheetIcon, { backgroundColor: visual.tint + "22" }]}><Ionicons name={visual.icon} size={30} color={visual.tint} /></View><Pressable accessibilityLabel="닫기" onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.surfaceRaised }]}><Ionicons name="close" size={20} color={colors.text} /></Pressable></View>
+        <View style={styles.sheetHeader}>{image ? <View style={[styles.sheetImageWrap, { backgroundColor: colors.surfaceRaised }]}><Image source={image} style={styles.sheetImage} contentFit="contain" /></View> : <View style={[styles.sheetIcon, { backgroundColor: visual.tint + "22" }]}><Ionicons name={reward.code === "COMMUNITY_BADGE" ? "ribbon" : visual.icon} size={30} color={visual.tint} /></View>}<Pressable accessibilityLabel="닫기" onPress={onClose} style={[styles.closeButton, { backgroundColor: colors.surfaceRaised }]}><Ionicons name="close" size={20} color={colors.text} /></Pressable></View>
         <Text style={[styles.sheetType, { color: colors.green }]}>{typeLabel(reward.type)} · {reward.sponsorName}</Text>
         <Text style={[styles.sheetTitle, { color: colors.text }]}>{reward.title}</Text>
         <Text style={[styles.sheetDescription, { color: colors.muted }]}>{reward.description}</Text>
@@ -196,7 +218,6 @@ const styles = StyleSheet.create({
   balanceLabel: { fontFamily: "WantedSansR", fontSize: 11 },
   balanceValue: { fontFamily: "WantedSansB", fontSize: 29, marginTop: 5 },
   balanceUnit: { fontSize: 15 },
-  balanceHint: { fontFamily: "WantedSansR", fontSize: 10, marginTop: 5 },
   balanceIcon: { alignItems: "center", borderRadius: 999, height: 58, justifyContent: "center", width: 58 },
   sectionHeader: { alignItems: "flex-end", flexDirection: "row", justifyContent: "space-between", marginTop: 25 },
   sectionTitle: { fontFamily: "WantedSansB", fontSize: 20 },
@@ -212,10 +233,18 @@ const styles = StyleSheet.create({
   stateTitle: { fontFamily: "WantedSansB", fontSize: 15, marginTop: 12 },
   retryButton: { borderRadius: 999, marginTop: 15, paddingHorizontal: 16, paddingVertical: 9 },
   retryText: { color: "#17310b", fontFamily: "WantedSansB", fontSize: 11 },
-  rewardCard: { borderRadius: 19, borderWidth: 1, flexDirection: "row", marginTop: 11, padding: 13 },
+  rewardFrame: { marginTop: 11, position: "relative" },
+  limitedGlow: { bottom: 0, borderRadius: 20, borderWidth: 2, elevation: 10, left: 0, position: "absolute", right: 0, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.8, shadowRadius: 12, top: 0 },
+  rewardCard: { borderRadius: 19, borderWidth: 1, flexDirection: "row", overflow: "hidden", padding: 13 },
   rewardIcon: { alignItems: "center", borderRadius: 16, height: 62, justifyContent: "center", width: 62 },
+  rewardImageWrap: { alignItems: "center", borderRadius: 16, height: 72, justifyContent: "center", overflow: "hidden", width: 78 },
+  rewardImage: { height: "100%", width: "100%" },
+  sparkleDot: { borderRadius: 999, height: 8, position: "absolute", right: 10, top: 9, width: 8 },
   rewardCopy: { flex: 1, marginLeft: 13 },
   rewardTop: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  rewardLabelRow: { alignItems: "center", flexDirection: "row", gap: 6 },
+  limitedPill: { alignItems: "center", borderRadius: 999, flexDirection: "row", gap: 3, paddingHorizontal: 6, paddingVertical: 3 },
+  limitedPillText: { color: "#17310b", fontFamily: "WantedSansB", fontSize: 7, letterSpacing: 0.5 },
   rewardType: { fontFamily: "WantedSansB", fontSize: 9 },
   rewardStock: { fontFamily: "WantedSansR", fontSize: 9 },
   rewardTitle: { fontFamily: "WantedSansB", fontSize: 14, lineHeight: 19, marginTop: 5 },
@@ -236,6 +265,8 @@ const styles = StyleSheet.create({
   sheetHandle: { borderRadius: 99, height: 4, width: 40 },
   sheetHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   sheetIcon: { alignItems: "center", borderRadius: 18, height: 62, justifyContent: "center", width: 62 },
+  sheetImageWrap: { alignItems: "center", borderRadius: 18, height: 76, justifyContent: "center", overflow: "hidden", width: 92 },
+  sheetImage: { height: "100%", width: "100%" },
   closeButton: { alignItems: "center", borderRadius: 999, height: 38, justifyContent: "center", width: 38 },
   sheetType: { fontFamily: "WantedSansB", fontSize: 10, marginTop: 18 },
   sheetTitle: { fontFamily: "WantedSansB", fontSize: 23, letterSpacing: -0.8, lineHeight: 30, marginTop: 7 },

@@ -28,6 +28,7 @@ import {
   summarizeFilters,
   type MissionFilters,
 } from "../data/missions";
+import { getSavedMissionIds, toggleMissionSaved } from "../data/savedMissions";
 import { useCurrentLocation } from "../hooks/useCurrentLocation";
 import { useTheme } from "../theme/ThemeContext";
 
@@ -43,7 +44,11 @@ export default function MissionScreen() {
   // 모든 탭이 앱 시작 시 함께 마운트되므로(_layout.tsx의 lazy: false),
   // 이 탭을 처음 열 때까지 위치 권한 요청과 네이티브 지도 생성을 미룬다.
   const [activated, setActivated] = useState(false);
-  useFocusEffect(useCallback(() => setActivated(true), []));
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+  useFocusEffect(useCallback(() => {
+    setActivated(true);
+    void getSavedMissionIds().then(setSavedIds);
+  }, []));
   const { coords, origin, hasPermission, settled } =
     useCurrentLocation(activated);
 
@@ -93,6 +98,10 @@ export default function MissionScreen() {
   const selectMission = useCallback((id: string) => {
     setFilterOpen(false);
     setSelectedId(id);
+  }, []);
+
+  const toggleSaved = useCallback(async (id: string) => {
+    setSavedIds(await toggleMissionSaved(id));
   }, []);
 
   // 목록에서 지도로 돌아올 때는 선택해둔 핀을 다시 화면 중앙으로 맞춘다. 목록에 가려진
@@ -215,14 +224,12 @@ export default function MissionScreen() {
                             {status.label} · {mission.difficulty}
                           </Text>
                         </View>
-                        <Text
-                          style={[
-                            styles.missionPoints,
-                            { color: colors.orange },
-                          ]}
-                        >
-                          ★ {mission.rewardPoint}P
-                        </Text>
+                        <View style={styles.missionPointActions}>
+                          <Text style={[styles.missionPoints, { color: colors.orange }]}>★ {mission.rewardPoint}P</Text>
+                          <Pressable accessibilityLabel={`${mission.title} ${savedIds.includes(mission.id) ? "저장 해제" : "저장"}`} onPress={(event) => { event.stopPropagation(); void toggleSaved(mission.id); }} hitSlop={8} style={[styles.saveButton, { backgroundColor: savedIds.includes(mission.id) ? colors.greenSoft : colors.surfaceRaised }]}>
+                            <Ionicons name={savedIds.includes(mission.id) ? "bookmark" : "bookmark-outline"} size={14} color={savedIds.includes(mission.id) ? colors.greenInk : colors.muted} />
+                          </Pressable>
+                        </View>
                       </View>
                       <Text
                         numberOfLines={2}
@@ -646,6 +653,8 @@ const styles = StyleSheet.create({
   missionStatus: { alignItems: "center", flexDirection: "row", gap: 3 },
   missionCategory: { fontFamily: "WantedSansB", fontSize: 10 },
   missionPoints: { fontFamily: "WantedSansB", fontSize: 11 },
+  missionPointActions: { alignItems: "center", flexDirection: "row", gap: 6 },
+  saveButton: { alignItems: "center", borderRadius: 999, height: 27, justifyContent: "center", width: 27 },
   missionTitle: {
     fontFamily: "WantedSansB",
     letterSpacing: -0.4,

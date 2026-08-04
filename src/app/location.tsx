@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import { Image } from "expo-image";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -15,12 +15,18 @@ export default function LocationSetupScreen() {
   const [loading, setLoading] = useState(false);
   const [denied, setDenied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const detectingRef = useRef(false);
 
   const detect = async () => {
+    if (detectingRef.current) return;
+    detectingRef.current = true;
     setLoading(true);
     setError(null);
     try {
-      const permission = await Location.requestForegroundPermissionsAsync();
+      const existingPermission = await Location.getForegroundPermissionsAsync();
+      const permission = existingPermission.status === "granted" || !existingPermission.canAskAgain
+        ? existingPermission
+        : await Location.requestForegroundPermissionsAsync();
       if (permission.status !== "granted") {
         setDenied(true);
         return;
@@ -31,6 +37,7 @@ export default function LocationSetupScreen() {
     } catch (requestError) {
       setError(requestError instanceof ApiError ? requestError.message : "현재 위치를 확인하지 못했어요. 잠시 후 다시 시도해주세요.");
     } finally {
+      detectingRef.current = false;
       setLoading(false);
     }
   };

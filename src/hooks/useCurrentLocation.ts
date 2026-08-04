@@ -28,7 +28,11 @@ export function useCurrentLocation(enabled: boolean) {
 
     (async () => {
       try {
-        const { granted } = await Location.requestForegroundPermissionsAsync();
+        const existingPermission = await Location.getForegroundPermissionsAsync();
+        const permission = existingPermission.status === "undetermined"
+          ? await Location.requestForegroundPermissionsAsync()
+          : existingPermission;
+        const { granted } = permission;
         if (!isMounted) return;
         setHasPermission(granted);
         if (!granted) {

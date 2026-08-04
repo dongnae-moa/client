@@ -56,6 +56,15 @@ export default {
             "내 주변 미션을 지도에 보여주기 위해 위치를 사용합니다.",
         },
       ],
+      [
+        "expo-image-picker",
+        {
+          photosPermission:
+            "동네 인증과 게시글에 사진을 첨부하기 위해 사진 보관함을 사용합니다.",
+          cameraPermission: false,
+          microphonePermission: false,
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,

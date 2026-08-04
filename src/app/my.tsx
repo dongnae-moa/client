@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { ApiError } from "../api/client";
@@ -8,7 +8,14 @@ import type { RewardRedemption } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import AppHeader from "../components/AppHeader";
 import { ScreenSurface, SurfaceCard } from "../components/ScreenSurface";
+import { getSavedMissionIds } from "../data/savedMissions";
 import { useTheme } from "../theme/ThemeContext";
+
+const activityPeriods = [
+  { id: "week", label: "이번 주", values: ["3개", "1건", "45 XP", "120 XP"] },
+  { id: "month", label: "최근 4주", values: ["24개", "8건", "73 XP", "240 XP"] },
+  { id: "quarter", label: "최근 3개월", values: ["61개", "19건", "184 XP", "720 XP"] },
+] as const;
 
 export default function MyScreen() {
   const router = useRouter();
@@ -17,6 +24,8 @@ export default function MyScreen() {
   const [benefits, setBenefits] = useState<RewardRedemption[]>([]);
   const [benefitError, setBenefitError] = useState<string | null>(null);
   const [applyingId, setApplyingId] = useState<number | null>(null);
+  const [activityPeriod, setActivityPeriod] = useState<(typeof activityPeriods)[number]>(activityPeriods[1]);
+  const [savedMissionCount, setSavedMissionCount] = useState(0);
 
   const loadBenefits = useCallback(async () => {
     try {
@@ -29,7 +38,10 @@ export default function MyScreen() {
     }
   }, [refreshProfile, updateUser]);
 
-  useFocusEffect(useCallback(() => { void loadBenefits(); }, [loadBenefits]));
+  useFocusEffect(useCallback(() => {
+    void loadBenefits();
+    void getSavedMissionIds().then((ids) => setSavedMissionCount(ids.length));
+  }, [loadBenefits]));
 
   const applyDecoration = async (benefit: RewardRedemption) => {
     if (!user) return;
@@ -59,18 +71,18 @@ export default function MyScreen() {
   return (
     <ScreenSurface>
       <AppHeader title="마이페이지" settings />
-      <View style={styles.profile}>
+      <Pressable accessibilityRole="button" accessibilityLabel="프로필 상세 보기" onPress={() => router.push("/profile" as Href)} style={({ pressed }) => [styles.profile, pressed && styles.profilePressed]}>
         <View style={[styles.avatarRing, user?.profileDecorationKey && { borderColor: colors.green, shadowColor: colors.green, shadowOpacity: 0.5, shadowRadius: 9 }]}>
           <View style={[styles.avatar, { backgroundColor: colors.greenSoft }]}><Ionicons name={user?.profileDecorationKey === "community-hero" ? "medal" : "person"} size={28} color={colors.green} /></View>
           {user?.profileDecorationKey ? <View style={[styles.decorationBadge, { backgroundColor: colors.green }]}><Ionicons name="leaf" size={11} color="#17310b" /></View> : null}
         </View>
         <View style={styles.profileCopy}><Text style={[styles.username, { color: colors.text }]}>{user?.nickname ?? "동네 주민"}</Text><Text style={[styles.location, { color: colors.muted }]}>{user?.neighborhoodName ?? "동네 설정 중"} 주민 · Gold</Text></View>
         <Ionicons name="chevron-forward" size={19} color={colors.muted} />
-      </View>
+      </Pressable>
 
       <SurfaceCard style={styles.statsCard}><View style={styles.statsGrid}>{stats.map((stat, index) => <View key={stat.label} style={[styles.stat, index < 3 && { borderRightColor: colors.border, borderRightWidth: 1 }]}><Ionicons name={stat.icon} size={20} color={stat.color} /><Text style={[styles.statValue, { color: colors.text }]}>{stat.value}</Text><Text style={[styles.statLabel, { color: colors.muted }]}>{stat.label}</Text></View>)}</View></SurfaceCard>
 
-      <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>내 혜택</Text><Pressable onPress={() => router.navigate("/store")}><Text style={[styles.more, { color: colors.green }]}>상점 보기 ›</Text></Pressable></View>
+      <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>내 혜택</Text>{benefits.length > 0 ? <View style={[styles.savedStatus, { backgroundColor: colors.greenSoft }]}><Ionicons name="checkmark-circle" size={12} color={colors.greenInk} /><Text style={[styles.savedStatusText, { color: colors.greenInk }]}>{benefits.length}개 저장됨</Text></View> : <Pressable onPress={() => router.navigate("/store")}><Text style={[styles.more, { color: colors.green }]}>상점 보기 ›</Text></Pressable>}</View>
       <SurfaceCard>
         {benefits.length === 0 ? <View style={styles.emptyBenefits}><Ionicons name="gift-outline" size={24} color={colors.green} /><Text style={[styles.emptyTitle, { color: colors.text }]}>아직 보관한 혜택이 없어요</Text><Text style={[styles.emptyText, { color: colors.muted }]}>미션 포인트로 첫 혜택을 교환해보세요.</Text></View> : benefits.slice(0, 4).map((benefit, index) => (
           <View key={benefit.id} style={[styles.benefitRow, index < Math.min(benefits.length, 4) - 1 && { borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
@@ -88,17 +100,19 @@ export default function MyScreen() {
       <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>배지</Text><Text style={[styles.more, { color: colors.green }]}>더보기 ›</Text></View>
       <SurfaceCard><View style={styles.badges}>{["첫 미션", "환경 지킴이", "기록자"].map((badge, index) => <View key={badge} style={styles.badge}><View style={[styles.badgeIcon, { backgroundColor: index === 1 ? colors.greenSoft : colors.surfaceRaised }]}><Ionicons name={index === 0 ? "location" : index === 1 ? "leaf" : "camera"} size={24} color={index === 1 ? colors.green : colors.orange} /></View><Text style={[styles.badgeText, { color: colors.text }]}>{badge}</Text><Text style={[styles.badgeDate, { color: colors.muted }]}>2026.07.{20 + index * 4}</Text></View>)}</View></SurfaceCard>
 
-      <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>활동 요약</Text><Text style={[styles.more, { color: colors.green }]}>최근 4주</Text></View>
-      <SurfaceCard><View style={styles.activityRows}>{["미션 완료", "동네 제보", "커뮤니티 XP"].map((label, index) => <View key={label} style={styles.activityRow}><View style={styles.activityLabel}><Ionicons name={index === 0 ? "checkmark-circle-outline" : index === 1 ? "megaphone-outline" : "sparkles-outline"} size={18} color={colors.green} /><Text style={[styles.activityText, { color: colors.text }]}>{label}</Text></View><Text style={[styles.activityValue, { color: colors.text }]}>{["24개", "8건", "73 XP"][index]}</Text></View>)}</View></SurfaceCard>
+      <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>활동 요약</Text><Text style={[styles.periodLabel, { color: colors.muted }]}>{activityPeriod.label}</Text></View>
+      <View style={styles.periodChips}>{activityPeriods.map((period) => { const active = period.id === activityPeriod.id; return <Pressable key={period.id} onPress={() => setActivityPeriod(period)} style={[styles.periodChip, { backgroundColor: active ? colors.green : colors.surface, borderColor: active ? colors.green : colors.border }]}><Text style={[styles.periodChipText, { color: active ? "#17310b" : colors.text }]}>{period.label}</Text></Pressable>; })}</View>
+      <SurfaceCard><View style={styles.activityRows}>{["미션 완료", "동네 제보", "Community XP 기여", "Personal XP 획득"].map((label, index) => <View key={label} style={styles.activityRow}><View style={styles.activityLabel}><Ionicons name={index === 0 ? "checkmark-circle-outline" : index === 1 ? "megaphone-outline" : index === 2 ? "people-outline" : "person-circle-outline"} size={18} color={index === 3 ? colors.purple : colors.green} /><Text style={[styles.activityText, { color: colors.text }]}>{label}</Text></View><Text style={[styles.activityValue, { color: index === 3 ? colors.purple : colors.text }]}>{activityPeriod.values[index]}</Text></View>)}</View></SurfaceCard>
 
-      <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>내가 저장한 미션</Text><Pressable onPress={() => router.navigate("/mission")}><Text style={[styles.more, { color: colors.green }]}>3개 ›</Text></Pressable></View>
-      <SurfaceCard><Text style={[styles.savedTitle, { color: colors.text }]}>공원 안내판 상태 확인하기</Text><Text style={[styles.savedMeta, { color: colors.muted }]}>180m · 약 2분 · 5P</Text></SurfaceCard>
+      <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>내가 저장한 미션</Text><Pressable onPress={() => router.push("/saved-missions" as Href)}><Text style={[styles.more, { color: colors.green }]}>별도 화면에서 보기 ›</Text></Pressable></View>
+      <Pressable onPress={() => router.push("/saved-missions" as Href)} style={({ pressed }) => pressed && styles.profilePressed}><SurfaceCard style={styles.savedMissionCard}><View style={[styles.savedIcon, { backgroundColor: colors.greenSoft }]}><Ionicons name="bookmark" size={20} color={colors.greenInk} /></View><View style={styles.savedCopy}><Text style={[styles.savedTitle, { color: colors.text }]}>저장한 미션 {savedMissionCount}개</Text><Text style={[styles.savedMeta, { color: colors.muted }]}>{savedMissionCount > 0 ? "별도 목록에서 확인하고 관리해요." : "미션 목록에서 북마크를 눌러보세요."}</Text></View><Ionicons name="chevron-forward" size={18} color={colors.muted} /></SurfaceCard></Pressable>
     </ScreenSurface>
   );
 }
 
 const styles = StyleSheet.create({
   profile: { alignItems: "center", flexDirection: "row", marginBottom: 14, paddingHorizontal: 4 },
+  profilePressed: { opacity: 0.72 },
   avatarRing: { alignItems: "center", borderColor: "transparent", borderRadius: 999, borderWidth: 3, height: 68, justifyContent: "center", width: 68 },
   avatar: { alignItems: "center", borderRadius: 999, height: 58, justifyContent: "center", width: 58 },
   decorationBadge: { alignItems: "center", borderRadius: 999, bottom: -1, height: 22, justifyContent: "center", position: "absolute", right: -2, width: 22 },
@@ -113,6 +127,8 @@ const styles = StyleSheet.create({
   sectionHeader: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between", marginTop: 22, paddingHorizontal: 2 },
   sectionTitle: { fontFamily: "WantedSansB", fontSize: 18 },
   more: { fontFamily: "WantedSansB", fontSize: 11 },
+  savedStatus: { alignItems: "center", borderRadius: 999, flexDirection: "row", gap: 4, paddingHorizontal: 8, paddingVertical: 5 },
+  savedStatusText: { fontFamily: "WantedSansB", fontSize: 8 },
   emptyBenefits: { alignItems: "center", paddingVertical: 10 },
   emptyTitle: { fontFamily: "WantedSansB", fontSize: 12, marginTop: 8 },
   emptyText: { fontFamily: "WantedSansR", fontSize: 9, marginTop: 4 },
@@ -136,6 +152,13 @@ const styles = StyleSheet.create({
   activityLabel: { alignItems: "center", flexDirection: "row", gap: 8 },
   activityText: { fontFamily: "WantedSansR", fontSize: 13 },
   activityValue: { fontFamily: "WantedSansB", fontSize: 13 },
+  periodLabel: { fontFamily: "WantedSansR", fontSize: 10 },
+  periodChips: { flexDirection: "row", gap: 7, marginBottom: 9, marginTop: 10 },
+  periodChip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 11, paddingVertical: 7 },
+  periodChipText: { fontFamily: "WantedSansB", fontSize: 9 },
+  savedMissionCard: { alignItems: "center", flexDirection: "row" },
+  savedIcon: { alignItems: "center", borderRadius: 13, height: 44, justifyContent: "center", width: 44 },
+  savedCopy: { flex: 1, marginLeft: 10 },
   savedTitle: { fontFamily: "WantedSansB", fontSize: 14 },
   savedMeta: { fontFamily: "WantedSansR", fontSize: 11, marginTop: 5 },
 });

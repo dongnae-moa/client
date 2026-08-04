@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { ApiError } from "../../api/client";
@@ -75,7 +75,7 @@ export default function SignupScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <StatusBar style={mode === "dark" ? "light" : "dark"} />
-      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0}>
         <View style={styles.header}>
           <Pressable accessibilityLabel="이전" hitSlop={10} onPress={back} style={[styles.backButton, { backgroundColor: colors.surface }]}>
             <Ionicons name="arrow-back" size={21} color={colors.text} />
@@ -88,7 +88,7 @@ export default function SignupScreen() {
           {Array.from({ length: TOTAL_STEPS }).map((_, index) => <View key={index} style={[styles.progressSegment, { backgroundColor: index <= step ? colors.green : colors.border }]} />)}
         </View>
 
-        <View style={styles.body}>
+        <ScrollView style={styles.bodyScroll} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled" keyboardDismissMode="interactive" showsVerticalScrollIndicator={false}>
           <Text style={[styles.kicker, { color: colors.green }]}>{copy.kicker}</Text>
           <Text style={[styles.title, { color: colors.text }]}>{copy.title}</Text>
           <Text style={[styles.description, { color: colors.muted }]}>{copy.description}</Text>
@@ -103,7 +103,7 @@ export default function SignupScreen() {
             </> : null}
             <FormError>{error}</FormError>
           </View>
-        </View>
+        </ScrollView>
 
         <View style={styles.bottom}>
           <Pressable accessibilityRole="button" disabled={loading} onPress={() => { void next(); }} style={({ pressed }) => [styles.primary, { backgroundColor: colors.green }, pressed && styles.pressed, loading && styles.disabled]}>
@@ -126,7 +126,8 @@ const styles = StyleSheet.create({
   stepCount: { fontFamily: "WantedSansB", fontSize: 12, minWidth: 42, textAlign: "right" },
   progressTrack: { flexDirection: "row", gap: 7, marginHorizontal: 24, marginTop: 24 },
   progressSegment: { borderRadius: 99, flex: 1, height: 4 },
-  body: { flex: 1, paddingHorizontal: 24, paddingTop: 44 },
+  bodyScroll: { flex: 1 },
+  body: { flexGrow: 1, paddingBottom: 18, paddingHorizontal: 24, paddingTop: 44 },
   kicker: { fontFamily: "WantedSansB", fontSize: 12 },
   title: { fontFamily: "WantedSansB", fontSize: 30, letterSpacing: -1.2, lineHeight: 39, marginTop: 10 },
   description: { fontFamily: "WantedSansR", fontSize: 13, lineHeight: 20, marginTop: 12, maxWidth: 340 },

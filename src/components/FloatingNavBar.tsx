@@ -117,9 +117,11 @@ export default function FloatingNavBar() {
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [contentWidth, setContentWidth] = useState(0);
   const matchedIndex = TABS.findIndex((tab) => pathname === tab.path);
-  // 설정은 마이페이지에서 열리는 별도 화면이라 마지막 탭(마이)을 선택 상태로 둔다.
+  // 마이페이지에서 여는 세부 화면은 별도 경로여도 마지막 탭(마이)을 선택 상태로 둔다.
   const focusedIndex =
-    pathname === "/settings" ? TABS.length - 1 : Math.max(0, matchedIndex);
+    ["/settings", "/profile", "/saved-missions"].includes(pathname)
+      ? TABS.length - 1
+      : Math.max(0, matchedIndex);
   const requestedIndex = useRef(focusedIndex);
   const indicatorIndex = useSharedValue(focusedIndex);
   const dragOffset = useSharedValue(0);
