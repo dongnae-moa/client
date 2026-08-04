@@ -1,14 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Circle } from "react-native-svg";
+import { ApiError } from "../api/client";
+import { getQuests } from "../api/quests";
 import { useAuth } from "../auth/AuthContext";
 import AppHeader from "../components/AppHeader";
 import MissionComposer from "../components/MissionComposer";
-import { missionCards, neighborhoodMetrics } from "../data/mock";
+import { neighborhoodMetrics } from "../data/mock";
+import type { Mission } from "../data/missions";
+import { useCurrentLocation } from "../hooks/useCurrentLocation";
 import { useTheme } from "../theme/ThemeContext";
 
 function ProgressRing({ colors }: { colors: ReturnType<typeof useTheme>["colors"] }) {
@@ -49,8 +53,62 @@ export default function Index() {
     return () => clearTimeout(timer);
   }, [createdNotice]);
 
-  const recommendedMission = missionCards[0];
-  const otherMissions = missionCards.slice(1);
+  // 미션 탭과 같은 목록 API를 쓴다. 서버가 현재 위치 기준으로 가까운 순으로 주기 때문에
+  // 맨 앞이 그대로 "추천 미션"이 된다.
+  const [activated, setActivated] = useState(false);
+  const [missions, setMissions] = useState<Mission[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const neighborhoodId = user?.neighborhoodId ?? null;
+  const { origin } = useCurrentLocation(activated);
+
+  const loadMissions = useCallback(async () => {
+    if (neighborhoodId == null) {
+      setMissions([]);
+      setLoadError("동네를 설정하면 주변 미션을 볼 수 있어요.");
+      return;
+    }
+    try {
+      setMissions(
+        await getQuests({
+          neighborhoodId,
+          latitude: origin.latitude,
+          longitude: origin.longitude,
+        }),
+      );
+      setLoadError(null);
+    } catch (requestError) {
+      // DEBUG: 홈에서 실패했을 때도 원인을 남긴다.
+      console.log("[home] ✗ 목록 조회 실패", requestError);
+      setMissions([]);
+      setLoadError(
+        requestError instanceof ApiError
+          ? `${requestError.message} (HTTP ${requestError.status})`
+          : `미션을 불러오지 못했어요: ${
+              (requestError as Error)?.message ?? "알 수 없는 오류"
+            }`,
+      );
+    }
+  }, [neighborhoodId, origin.latitude, origin.longitude]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setActivated(true);
+      void loadMissions();
+    }, [loadMissions]),
+  );
+
+  const recommendedMission = missions[0] ?? null;
+  const otherMissions = missions.slice(1, 5);
+  // 가장 짧게 끝나는 미션을 "오늘의 3분 미션" 자리에 둔다.
+  const quickMission = useMemo(
+    () =>
+      missions.reduce<Mission | null>(
+        (shortest, mission) =>
+          !shortest || mission.minutes < shortest.minutes ? mission : shortest,
+        null,
+      ),
+    [missions],
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -60,25 +118,49 @@ export default function Index() {
         <Text style={[styles.greeting, { color: colors.muted }]}>오늘 우리 동네에서</Text>
         <Text style={[styles.heroTitle, { color: colors.text }]}>가볍게 바꿔볼까요?</Text>
 
-        <View style={[styles.recommendedCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <View style={styles.recommendedImageWrap}>
-            <Image source={recommendedMission.image} style={styles.recommendedImage} contentFit="cover" transition={160} />
-            <View style={styles.imageTopRow}><View style={styles.photoBadge}><Ionicons name="navigate" size={13} color="#17310b" /><Text style={styles.photoBadgeText}>내 주변 {recommendedMission.distance}</Text></View><View style={styles.pointBadge}><Ionicons name="star" size={13} color="#17310b" /><Text style={styles.pointBadgeText}>{recommendedMission.points}</Text></View></View>
-            <View style={styles.photoCaption}><Ionicons name="camera-outline" size={12} color="#fff" /><Text style={styles.photoCaptionText}>현장 사진</Text></View>
+        {recommendedMission ? (
+          <View style={[styles.recommendedCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <View style={styles.recommendedImageWrap}>
+              <Image source={recommendedMission.imageUrl} style={styles.recommendedImage} contentFit="cover" transition={160} />
+              <View style={styles.imageTopRow}><View style={styles.photoBadge}><Ionicons name="navigate" size={13} color="#17310b" /><Text style={styles.photoBadgeText}>내 주변 {recommendedMission.distanceMeters}m</Text></View><View style={styles.pointBadge}><Ionicons name="star" size={13} color="#17310b" /><Text style={styles.pointBadgeText}>{recommendedMission.rewardPoint}P</Text></View></View>
+              <View style={styles.photoCaption}><Ionicons name="camera-outline" size={12} color="#fff" /><Text style={styles.photoCaptionText}>현장 사진</Text></View>
+            </View>
+            <View style={styles.recommendedCopy}>
+              <View style={styles.cardEyebrowRow}><Text style={[styles.cardEyebrow, { color: colors.green }]}>가장 가까운 미션</Text><Text style={[styles.recommendedType, { color: colors.muted }]}>{recommendedMission.neighborhood.name}</Text></View>
+              <MissionTitle color={colors.text}>{recommendedMission.title}</MissionTitle>
+              <Text style={[styles.recommendedMeta, { color: colors.muted }]}>약 {recommendedMission.minutes}분 · {recommendedMission.difficulty} · {recommendedMission.authorNickname}님 제안</Text>
+              <Pressable style={({ pressed }) => [styles.primaryButton, { backgroundColor: colors.green }, pressed && styles.pressed]} onPress={() => router.push("/mission")}><Text style={styles.primaryButtonText}>미션 살펴보기</Text><Ionicons name="arrow-forward" size={18} color="#17310b" /></Pressable>
+            </View>
           </View>
-          <View style={styles.recommendedCopy}>
-            <View style={styles.cardEyebrowRow}><Text style={[styles.cardEyebrow, { color: colors.green }]}>가장 잘 맞는 추천 미션</Text><Text style={[styles.recommendedType, { color: colors.muted }]}>{recommendedMission.type}</Text></View>
-            <MissionTitle color={colors.text}>{recommendedMission.shortTitle}</MissionTitle>
-            <Text style={[styles.recommendedMeta, { color: colors.muted }]}>{recommendedMission.time} · 이동 동선과 관심사를 반영했어요</Text>
-            <Pressable style={({ pressed }) => [styles.primaryButton, { backgroundColor: colors.green }, pressed && styles.pressed]} onPress={() => router.push("/mission")}><Text style={styles.primaryButtonText}>미션 살펴보기</Text><Ionicons name="arrow-forward" size={18} color="#17310b" /></Pressable>
-          </View>
-        </View>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={loadError ? "미션 다시 불러오기" : "미션 둘러보기"}
+            onPress={() => { if (loadError) { void loadMissions(); } else { router.push("/mission"); } }}
+            style={({ pressed }) => [styles.emptyHero, { backgroundColor: colors.surface, borderColor: colors.border }, pressed && styles.pressed]}
+          >
+            <View style={[styles.emptyHeroIcon, { backgroundColor: colors.greenSoft }]}>
+              <Ionicons name={loadError ? "alert-circle-outline" : "sparkles-outline"} size={26} color={loadError ? colors.orange : colors.green} />
+            </View>
+            <Text style={[styles.emptyHeroTitle, { color: colors.text }]}>
+              {loadError ? "미션을 불러오지 못했어요" : "아직 등록된 미션이 없어요"}
+            </Text>
+            <Text style={[styles.emptyHeroBody, { color: colors.muted }]}>
+              {loadError ?? "우리 동네에 첫 미션을 만들어보세요."}
+            </Text>
+            {loadError ? <Text style={[styles.emptyHeroRetry, { color: colors.greenInk }]}>눌러서 다시 시도</Text> : null}
+          </Pressable>
+        )}
 
+        {otherMissions.length > 0 ? (
+          <>
         <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>다른 미션</Text><Text style={[styles.sectionHint, { color: colors.muted }]}>옆으로 넘겨보세요</Text></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={missionCardWidth + 12} decelerationRate="fast" contentContainerStyle={styles.missionRail} onMomentumScrollEnd={(event) => setActiveOtherMission(Math.min(otherMissions.length - 1, Math.round(event.nativeEvent.contentOffset.x / (missionCardWidth + 12))))}>
-          {otherMissions.map((item) => <View key={item.shortTitle} style={[styles.swipeCard, { width: missionCardWidth, backgroundColor: colors.surface, borderColor: colors.border }]}><Image source={item.image} style={[styles.swipeImage, { backgroundColor: colors.greenSoft }]} contentFit="cover" transition={160} /><View style={styles.swipeCopy}><Text style={[styles.swipeType, { color: colors.greenInk }]}>{item.type}</Text><MissionTitle compact color={colors.text}>{item.shortTitle}</MissionTitle><Text style={[styles.swipeMeta, { color: colors.muted }]}>{item.distance} · 약 {item.time}</Text></View><Text style={[styles.swipePointsText, { color: colors.orange }]}>{item.points}</Text></View>)}
+          {otherMissions.map((item) => <View key={item.id} style={[styles.swipeCard, { width: missionCardWidth, backgroundColor: colors.surface, borderColor: colors.border }]}><Image source={item.imageUrl} style={[styles.swipeImage, { backgroundColor: colors.greenSoft }]} contentFit="cover" transition={160} /><View style={styles.swipeCopy}><Text style={[styles.swipeType, { color: colors.greenInk }]}>{item.neighborhood.name}</Text><MissionTitle compact color={colors.text}>{item.title}</MissionTitle><Text style={[styles.swipeMeta, { color: colors.muted }]}>{item.distanceMeters}m · 약 {item.minutes}분</Text></View><Text style={[styles.swipePointsText, { color: colors.orange }]}>{item.rewardPoint}P</Text></View>)}
         </ScrollView>
-        <View style={styles.dots}>{otherMissions.map((item, index) => <View key={item.shortTitle} style={[styles.dot, { backgroundColor: colors.border }, index === activeOtherMission && { backgroundColor: colors.green, width: 16 }]} />)}</View>
+        <View style={styles.dots}>{otherMissions.map((item, index) => <View key={item.id} style={[styles.dot, { backgroundColor: colors.border }, index === activeOtherMission && { backgroundColor: colors.green, width: 16 }]} />)}</View>
+          </>
+        ) : null}
 
         {/* 홈은 카드가 이어지는 화면이라 만들기도 카드 형태로 둔다(미션 탭은 플로팅 버튼). */}
         <Pressable
@@ -109,7 +191,9 @@ export default function Index() {
 
         <View style={[styles.surfaceCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={styles.sectionCardHeader}><View style={styles.sectionHeadingRow}><Ionicons name="business-outline" size={19} color={colors.green} /><Text style={[styles.surfaceTitle, { color: colors.text }]}>우리 동네 현황</Text></View><Text style={[styles.period, { color: colors.muted }]}>이번 주</Text></View><View style={[styles.metricGrid, { borderBottomColor: colors.border, borderTopColor: colors.border }]}>{neighborhoodMetrics.map((metric, index) => <View key={metric.label} style={[styles.metric, { borderRightColor: colors.border }, index === 3 && styles.metricLast]}><Ionicons name={metric.icon} size={21} color={colors[metric.color]} /><Text style={[styles.metricLabel, { color: colors.muted }]}>{metric.label}</Text><Text style={[styles.metricValue, { color: colors.text }]}>{metric.value}</Text></View>)}</View><Pressable style={styles.cardLinkRow} onPress={() => router.push("/community")}><Text style={[styles.cardLink, { color: colors.greenInk }]}>동네 현황 더 보기</Text><Ionicons name="chevron-forward" size={16} color={colors.greenInk} /></Pressable></View>
 
-        <View style={[styles.surfaceCard, styles.dailyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.dailyImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="timer-outline" size={26} color={colors.green} /></View><View style={styles.dailyCopy}><Text style={[styles.dailyKicker, { color: colors.muted }]}>오늘의 3분 미션</Text><Text style={[styles.dailyTitle, { color: colors.text }]}>공원 안내판 상태 확인하기</Text><Text style={[styles.dailyMeta, { color: colors.greenInk }]}>180m · 약 2분</Text></View><Pressable onPress={() => router.push("/mission")} style={[styles.startButton, { backgroundColor: colors.green }]}><Text style={styles.startButtonText}>시작하기</Text></Pressable></View>
+        {quickMission ? (
+          <View style={[styles.surfaceCard, styles.dailyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.dailyImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="timer-outline" size={26} color={colors.green} /></View><View style={styles.dailyCopy}><Text style={[styles.dailyKicker, { color: colors.muted }]}>가장 빨리 끝나는 미션</Text><Text numberOfLines={2} style={[styles.dailyTitle, { color: colors.text }]}>{quickMission.title}</Text><Text style={[styles.dailyMeta, { color: colors.greenInk }]}>{quickMission.distanceMeters}m · 약 {quickMission.minutes}분</Text></View><Pressable onPress={() => router.push("/mission")} style={[styles.startButton, { backgroundColor: colors.green }]}><Text style={styles.startButtonText}>시작하기</Text></Pressable></View>
+        ) : null}
       </ScrollView>
 
       <MissionComposer
@@ -119,6 +203,8 @@ export default function Index() {
         onCreated={(title) => {
           setComposerOpen(false);
           setCreatedNotice(`"${title}" 미션을 등록했어요.`);
+          // 방금 만든 미션이 홈 카드에도 바로 보이도록 다시 불러온다.
+          void loadMissions();
         }}
       />
     </View>
@@ -147,6 +233,11 @@ const styles = StyleSheet.create({
   recommendedTitle: { fontFamily: "WantedSansB", letterSpacing: -1, marginTop: 10 },
   recommendedMeta: { fontFamily: "WantedSansR", fontSize: 11, marginTop: 5 },
   primaryButton: { alignItems: "center", alignSelf: "flex-start", borderRadius: 999, flexDirection: "row", gap: 6, marginTop: 13, paddingHorizontal: 15, paddingVertical: 9 },
+  emptyHero: { alignItems: "center", borderRadius: 22, borderWidth: 1, paddingHorizontal: 22, paddingVertical: 30 },
+  emptyHeroIcon: { alignItems: "center", borderRadius: 999, height: 54, justifyContent: "center", width: 54 },
+  emptyHeroTitle: { fontFamily: "WantedSansB", fontSize: 16, marginTop: 12 },
+  emptyHeroBody: { fontFamily: "WantedSansR", fontSize: 11, lineHeight: 17, marginTop: 6, textAlign: "center" },
+  emptyHeroRetry: { fontFamily: "WantedSansB", fontSize: 11, marginTop: 10 },
   createCard: { alignItems: "center", borderRadius: 18, borderStyle: "dashed", borderWidth: 1.5, flexDirection: "row", marginTop: 16, padding: 14 },
   createIcon: { alignItems: "center", borderRadius: 14, height: 46, justifyContent: "center", width: 46 },
   createCopy: { flex: 1, marginLeft: 12 },
