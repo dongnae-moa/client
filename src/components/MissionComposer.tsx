@@ -108,6 +108,7 @@ export default function MissionComposer({
           ? requestError.message
           : "미션을 등록하지 못했어요. 잠시 후 다시 시도해주세요.",
       );
+      console.log(requestError);
     } finally {
       setSubmitting(false);
     }
@@ -120,7 +121,9 @@ export default function MissionComposer({
       presentationStyle="pageSheet"
       onRequestClose={close}
     >
-      <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <SafeAreaView
+        style={[styles.safe, { backgroundColor: colors.background }]}
+      >
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -198,7 +201,11 @@ export default function MissionComposer({
                     { backgroundColor: colors.greenSoft },
                   ]}
                 >
-                  <Ionicons name="camera-outline" size={22} color={colors.green} />
+                  <Ionicons
+                    name="camera-outline"
+                    size={22}
+                    color={colors.green}
+                  />
                 </View>
                 <Text style={[styles.photoHint, { color: colors.muted }]}>
                   현장 사진은 필수예요. 상황이 보이는 사진을 한 장 올려주세요.
@@ -279,12 +286,20 @@ export default function MissionComposer({
             <View
               style={[
                 styles.aiNote,
-                { backgroundColor: colors.surfaceRaised, borderColor: colors.border },
+                {
+                  backgroundColor: colors.surfaceRaised,
+                  borderColor: colors.border,
+                },
               ]}
             >
-              <Ionicons name="sparkles-outline" size={16} color={colors.purple} />
+              <Ionicons
+                name="sparkles-outline"
+                size={16}
+                color={colors.purple}
+              />
               <Text style={[styles.aiNoteText, { color: colors.muted }]}>
-                예상 소요 시간과 포인트, 난이도, 체크 포인트는 등록한 뒤 AI가 정리해줘요.
+                예상 소요 시간과 포인트, 난이도, 체크 포인트는 등록한 뒤 AI가
+                정리해줘요.
               </Text>
             </View>
           </ScrollView>
@@ -365,8 +380,18 @@ const styles = StyleSheet.create({
     gap: 5,
     marginTop: 16,
   },
-  metaText: { flex: 1, fontFamily: "WantedSansB", fontSize: 11, lineHeight: 16 },
-  error: { fontFamily: "WantedSansB", fontSize: 11, lineHeight: 16, marginTop: 10 },
+  metaText: {
+    flex: 1,
+    fontFamily: "WantedSansB",
+    fontSize: 11,
+    lineHeight: 16,
+  },
+  error: {
+    fontFamily: "WantedSansB",
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 10,
+  },
   aiNote: {
     alignItems: "flex-start",
     borderRadius: 14,

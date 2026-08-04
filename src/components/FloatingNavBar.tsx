@@ -118,10 +118,11 @@ export default function FloatingNavBar() {
   const [contentWidth, setContentWidth] = useState(0);
   const matchedIndex = TABS.findIndex((tab) => pathname === tab.path);
   // 마이페이지에서 여는 세부 화면은 별도 경로여도 마지막 탭(마이)을 선택 상태로 둔다.
-  const focusedIndex =
-    ["/settings", "/profile", "/saved-missions"].includes(pathname)
-      ? TABS.length - 1
-      : Math.max(0, matchedIndex);
+  const focusedIndex = ["/settings", "/profile", "/saved-missions"].includes(
+    pathname,
+  )
+    ? TABS.length - 1
+    : Math.max(0, matchedIndex);
   const requestedIndex = useRef(focusedIndex);
   const indicatorIndex = useSharedValue(focusedIndex);
   const dragOffset = useSharedValue(0);
@@ -321,7 +322,6 @@ const styles = StyleSheet.create({
     left: 42,
     height: 16,
     borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.08)",
   },
   content: {
     flex: 1,
