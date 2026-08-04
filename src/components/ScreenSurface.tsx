@@ -2,7 +2,6 @@ import { ScrollView, StyleSheet, View, type ScrollViewProps } from "react-native
 import { StatusBar } from "expo-status-bar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../theme/ThemeContext";
-import FloatingNavBar from "./FloatingNavBar";
 
 export function ScreenSurface({ children, scroll = true, ...props }: ScrollViewProps & { scroll?: boolean }) {
   const insets = useSafeAreaInsets();
@@ -12,7 +11,6 @@ export function ScreenSurface({ children, scroll = true, ...props }: ScrollViewP
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar style={mode === "dark" ? "light" : "dark"} />
       {scroll ? <ScrollView {...props} showsVerticalScrollIndicator={false}>{content}</ScrollView> : content}
-      <FloatingNavBar />
     </View>
   );
 }
@@ -24,6 +22,6 @@ export function SurfaceCard({ children, style }: { children: React.ReactNode; st
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingHorizontal: 20, paddingTop: 8 },
+  content: { paddingHorizontal: 20, paddingTop: 28 },
   card: { borderRadius: 18, borderWidth: 1, padding: 16 },
 });

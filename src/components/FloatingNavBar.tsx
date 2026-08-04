@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { BlurView } from "expo-blur";
 import { type Href, usePathname, useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Keyboard, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -12,7 +12,7 @@ import { useTheme } from "../theme/ThemeContext";
 const SPRING = { damping: 18, stiffness: 230, mass: 0.72 };
 const TABS: Array<{ label: string; path: Href; icon: keyof typeof Ionicons.glyphMap; activeIcon: keyof typeof Ionicons.glyphMap }> = [
   { label: "홈", path: "/", icon: "home-outline", activeIcon: "home" },
-  { label: "지도", path: "/map", icon: "map-outline", activeIcon: "map" },
+  { label: "상점", path: "/map", icon: "storefront-outline", activeIcon: "storefront" },
   { label: "미션", path: "/mission", icon: "checkmark-circle-outline", activeIcon: "checkmark-circle" },
   { label: "커뮤니티", path: "/community", icon: "chatbubbles-outline", activeIcon: "chatbubbles" },
   { label: "마이", path: "/my", icon: "person-outline", activeIcon: "person" },
@@ -27,9 +27,9 @@ function TabItem({ tab, focused, onPress }: { tab: typeof TABS[number]; focused:
     <View style={styles.itemSlot}>
       <Pressable accessibilityRole="tab" accessibilityLabel={tab.label} accessibilityState={{ selected: focused }} onPress={onPress} style={styles.itemPressable}>
         <Animated.View style={[styles.icon, iconStyle]}>
-          <Ionicons name={focused ? tab.activeIcon : tab.icon} size={22} color={focused ? colors.green : colors.muted} />
+          <Ionicons name={focused ? tab.activeIcon : tab.icon} size={22} color={focused ? "#17310b" : colors.muted} />
         </Animated.View>
-        <Text style={[styles.label, { color: focused ? colors.text : colors.muted }]}>{tab.label}</Text>
+        <Text style={[styles.label, { color: focused ? "#17310b" : colors.muted }]}>{tab.label}</Text>
       </Pressable>
     </View>
   );
@@ -37,15 +37,17 @@ function TabItem({ tab, focused, onPress }: { tab: typeof TABS[number]; focused:
 
 function MissionTab({ focused, onPress }: { focused: boolean; onPress: () => void }) {
   const { colors } = useTheme();
-  const scale = useSharedValue(1);
-  const buttonStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const iconScale = useSharedValue(1);
+  const iconStyle = useAnimatedStyle(() => ({ transform: [{ scale: iconScale.value }] }));
   return (
     <View style={styles.itemSlot}>
-      <Pressable accessibilityRole="tab" accessibilityLabel="미션" accessibilityState={{ selected: focused }} onPress={onPress} onPressIn={() => { scale.value = withSpring(0.94, SPRING); }} onPressOut={() => { scale.value = withSpring(1, SPRING); }} style={styles.itemPressable}>
-        <Animated.View style={[styles.missionButton, { backgroundColor: focused ? colors.green : colors.navIndicator, borderColor: focused ? colors.green : colors.navBorder }, buttonStyle]}>
-          <Ionicons name={focused ? "checkmark-circle" : "checkmark-circle-outline"} size={25} color={focused ? "#17310b" : colors.green} />
-          <Text style={[styles.missionLabel, { color: focused ? "#17310b" : colors.text }]}>미션</Text>
-        </Animated.View>
+      <Pressable accessibilityRole="tab" accessibilityLabel="미션" accessibilityState={{ selected: focused }} onPress={onPress} onPressIn={() => { iconScale.value = withSpring(0.84, SPRING); }} onPressOut={() => { iconScale.value = withSpring(1, SPRING); }} style={styles.itemPressable}>
+        <View style={styles.missionButton}>
+          <Animated.View style={iconStyle}>
+          <Ionicons name={focused ? "checkmark-circle" : "checkmark-circle-outline"} size={25} color={focused ? "#17310b" : colors.muted} />
+          </Animated.View>
+          <Text style={[styles.missionLabel, { color: focused ? "#17310b" : colors.muted }]}>미션</Text>
+        </View>
       </Pressable>
     </View>
   );
@@ -58,10 +60,12 @@ export default function FloatingNavBar() {
   const { colors, mode } = useTheme();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [contentWidth, setContentWidth] = useState(0);
-  const indicatorIndex = useSharedValue(0);
+  const matchedIndex = TABS.findIndex((tab) => pathname === tab.path);
+  const focusedIndex = pathname === "/settings" ? 4 : Math.max(0, matchedIndex);
+  const requestedIndex = useRef(focusedIndex);
+  const indicatorIndex = useSharedValue(focusedIndex);
   const dragOffset = useSharedValue(0);
   const dragStart = useSharedValue(0);
-  const focusedIndex = Math.max(0, TABS.findIndex((tab) => pathname === tab.path));
 
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
@@ -70,12 +74,23 @@ export default function FloatingNavBar() {
     const hide = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
     return () => { show.remove(); hide.remove(); };
   }, []);
-  useEffect(() => { indicatorIndex.value = withSpring(focusedIndex, SPRING); }, [focusedIndex, indicatorIndex]);
+  useEffect(() => {
+    if (requestedIndex.current === focusedIndex) return;
+    requestedIndex.current = focusedIndex;
+    dragOffset.value = 0;
+    indicatorIndex.value = withSpring(focusedIndex, SPRING);
+  }, [dragOffset, focusedIndex, indicatorIndex]);
 
-  const selectTab = (index: number) => {
+  const selectTab = useCallback((index: number, animateIndicator = true) => {
     const tab = TABS[index];
-    if (tab && index !== focusedIndex) router.replace(tab.path);
-  };
+    if (!tab) return;
+    requestedIndex.current = index;
+    if (animateIndicator) {
+      dragOffset.value = 0;
+      indicatorIndex.value = withSpring(index, SPRING);
+    }
+    if (index !== focusedIndex) router.navigate(tab.path);
+  }, [dragOffset, focusedIndex, indicatorIndex, router]);
 
   const indicatorStyle = useAnimatedStyle(() => {
     const inset = 4;
@@ -87,17 +102,29 @@ export default function FloatingNavBar() {
   const dragGesture = useMemo(() => Gesture.Pan()
     .activeOffsetX([-8, 8])
     .failOffsetY([-12, 12])
-    .onStart(() => { dragStart.value = indicatorIndex.value; dragOffset.value = 0; })
+    .onStart(() => {
+      dragStart.value = indicatorIndex.value + dragOffset.value;
+      indicatorIndex.value = dragStart.value;
+      dragOffset.value = 0;
+    })
     .onUpdate((event) => {
       const slotWidth = contentWidth > 0 ? (contentWidth - 8) / TABS.length : 0;
       if (slotWidth > 0) dragOffset.value = Math.min(TABS.length - 1 - dragStart.value, Math.max(-dragStart.value, event.translationX / slotWidth));
     })
     .onEnd(() => {
       const target = Math.min(TABS.length - 1, Math.max(0, Math.round(dragStart.value + dragOffset.value)));
-      indicatorIndex.value = withSpring(target, SPRING);
-      dragOffset.value = 0;
-      runOnJS(selectTab)(target);
-    }), [contentWidth, focusedIndex]);
+      const targetOffset = target - dragStart.value;
+      dragOffset.value = withSpring(targetOffset, SPRING, (finished) => {
+        if (!finished) return;
+        indicatorIndex.value = target;
+        dragOffset.value = 0;
+      });
+      runOnJS(selectTab)(target, false);
+    })
+    .onFinalize((_event, success) => {
+      if (success) return;
+      dragOffset.value = withSpring(0, SPRING);
+    }), [contentWidth, selectTab]);
 
   if (keyboardVisible) return null;
   return (
@@ -108,7 +135,7 @@ export default function FloatingNavBar() {
         <View style={styles.innerGloss} pointerEvents="none" />
         <GestureDetector gesture={dragGesture}>
           <View style={styles.content} onLayout={(event) => setContentWidth(event.nativeEvent.layout.width)}>
-            {focusedIndex !== 2 ? <Animated.View style={[styles.liquidIndicator, { backgroundColor: colors.navIndicator, borderColor: colors.navBorder }, indicatorStyle]} pointerEvents="none" /> : null}
+            <Animated.View style={[styles.liquidIndicator, { backgroundColor: colors.green, borderColor: colors.green }, indicatorStyle]} pointerEvents="none" />
             {TABS.map((tab, index) => index === 2 ? <MissionTab key={tab.label} focused={focusedIndex === index} onPress={() => selectTab(index)} /> : <TabItem key={tab.label} tab={tab} focused={focusedIndex === index} onPress={() => selectTab(index)} />)}
           </View>
         </GestureDetector>
@@ -128,7 +155,7 @@ const styles = StyleSheet.create({
   itemPressable: { width: 56, height: 60, alignItems: "center", justifyContent: "center", borderRadius: 999 },
   icon: { width: 26, height: 26, alignItems: "center", justifyContent: "center" },
   label: { maxWidth: 64, fontFamily: "WantedSansB", fontSize: 9, lineHeight: 12, marginTop: 1 },
-  liquidIndicator: { position: "absolute", top: "50%", marginTop: -28, height: 56, width: 56, borderRadius: 999, borderWidth: StyleSheet.hairlineWidth, shadowColor: "#fff", shadowOpacity: 0.1, shadowRadius: 12, shadowOffset: { width: 0, height: 2 } },
-  missionButton: { width: 56, height: 56, alignItems: "center", justifyContent: "center", borderRadius: 999, borderWidth: 1.5, shadowColor: "#9be267", shadowOpacity: 0.28, shadowRadius: 13, shadowOffset: { width: 0, height: 5 }, elevation: 6 },
+  liquidIndicator: { position: "absolute", top: "50%", marginTop: -28, height: 56, width: 56, borderRadius: 999, borderWidth: 1.5, shadowColor: "#a7e66d", shadowOpacity: 0.58, shadowRadius: 16, shadowOffset: { width: 0, height: 4 }, elevation: 8 },
+  missionButton: { width: 56, height: 56, alignItems: "center", justifyContent: "center", borderRadius: 999, backgroundColor: "transparent" },
   missionLabel: { fontFamily: "WantedSansB", fontSize: 9, lineHeight: 11, marginTop: -1 },
 });
