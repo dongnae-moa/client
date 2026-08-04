@@ -6,7 +6,6 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import AppHeader from "../components/AppHeader";
-import FloatingNavBar from "../components/FloatingNavBar";
 import { missionCards, neighborhoodMetrics } from "../data/mock";
 import { useTheme } from "../theme/ThemeContext";
 
@@ -23,6 +22,12 @@ function ProgressRing({ colors }: { colors: ReturnType<typeof useTheme>["colors"
       <View style={styles.progressRingText}><Text style={styles.progressValue}>73</Text><Text style={styles.progressTotal}>/100</Text></View>
     </View>
   );
+}
+
+function MissionTitle({ children, compact = false, color = "#050505" }: { children: string; compact?: boolean; color?: string }) {
+  const length = children.length;
+  const fontSize = compact ? (length > 15 ? 14 : 16) : (length > 19 ? 18 : length > 13 ? 21 : 23);
+  return <Text numberOfLines={2} adjustsFontSizeToFit={false} style={[compact ? styles.swipeTitle : styles.recommendedTitle, { color, fontSize, lineHeight: compact ? fontSize + 4 : fontSize + 6 }]}>{children}</Text>;
 }
 
 export default function Index() {
@@ -43,14 +48,14 @@ export default function Index() {
 
         <View style={[styles.recommendedCard, { backgroundColor: colors.greenSoft }]}>
           <View style={styles.cardEyebrowRow}><Text style={styles.cardEyebrow}>추천 미션 · {mission.distance}</Text><Text style={styles.pointsText}>★ {mission.points}</Text></View>
-          <Text style={styles.recommendedTitle}>{mission.shortTitle}</Text>
+          <MissionTitle>{mission.shortTitle}</MissionTitle>
           <Text style={styles.recommendedMeta}>{mission.type} · {mission.time} · temp_username</Text>
           <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]} onPress={() => router.push("/mission")}><Text style={styles.primaryButtonText}>미션 살펴보기</Text><Ionicons name="arrow-forward" size={18} color="#17310b" /></Pressable>
         </View>
 
         <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>다른 미션</Text><Text style={[styles.sectionHint, { color: colors.muted }]}>옆으로 넘겨보세요</Text></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={missionCardWidth + 12} decelerationRate="fast" contentContainerStyle={styles.missionRail} onMomentumScrollEnd={(event) => setActiveMission(Math.round(event.nativeEvent.contentOffset.x / (missionCardWidth + 12)) % missionCards.length)}>
-          {missionCards.map((item) => <View key={item.shortTitle} style={[styles.swipeCard, { width: missionCardWidth, backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.swipeImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="leaf-outline" size={28} color={colors.green} /></View><View style={styles.swipeCopy}><Text style={[styles.swipeType, { color: colors.green }]}>{item.type}</Text><Text style={[styles.swipeTitle, { color: colors.text }]}>{item.shortTitle}</Text><Text style={[styles.swipeMeta, { color: colors.muted }]}>{item.distance} · 약 {item.time}</Text></View><Text style={[styles.swipePointsText, { color: colors.orange }]}>{item.points}</Text></View>)}
+          {missionCards.map((item) => <View key={item.shortTitle} style={[styles.swipeCard, { width: missionCardWidth, backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.swipeImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="leaf-outline" size={28} color={colors.green} /></View><View style={styles.swipeCopy}><Text style={[styles.swipeType, { color: colors.green }]}>{item.type}</Text><MissionTitle compact color={colors.text}>{item.shortTitle}</MissionTitle><Text style={[styles.swipeMeta, { color: colors.muted }]}>{item.distance} · 약 {item.time}</Text></View><Text style={[styles.swipePointsText, { color: colors.orange }]}>{item.points}</Text></View>)}
         </ScrollView>
         <View style={styles.dots}>{missionCards.map((item, index) => <View key={item.shortTitle} style={[styles.dot, { backgroundColor: colors.border }, index === activeMission && { backgroundColor: colors.green, width: 16 }]} />)}</View>
 
@@ -63,21 +68,20 @@ export default function Index() {
 
         <View style={[styles.surfaceCard, styles.dailyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.dailyImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="timer-outline" size={26} color={colors.green} /></View><View style={styles.dailyCopy}><Text style={[styles.dailyKicker, { color: colors.muted }]}>오늘의 3분 미션</Text><Text style={[styles.dailyTitle, { color: colors.text }]}>공원 안내판 상태 확인하기</Text><Text style={[styles.dailyMeta, { color: colors.green }]}>180m · 약 2분</Text></View><Pressable onPress={() => router.push("/mission")} style={[styles.startButton, { backgroundColor: colors.green }]}><Text style={styles.startButtonText}>시작하기</Text></Pressable></View>
       </ScrollView>
-      <FloatingNavBar />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { paddingBottom: 148, paddingHorizontal: 20 },
+  content: { paddingBottom: 148, paddingHorizontal: 20, paddingTop: 26 },
   greeting: { fontFamily: "WantedSansR", fontSize: 13, marginTop: 6 },
   heroTitle: { fontFamily: "WantedSansB", fontSize: 27, letterSpacing: -1, marginBottom: 15, marginTop: 4 },
   recommendedCard: { borderRadius: 20, minHeight: 174, padding: 16 },
   cardEyebrowRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   cardEyebrow: { color: "#2c461c", fontFamily: "WantedSansB", fontSize: 13 },
   pointsText: { color: "#24310e", fontFamily: "WantedSansB", fontSize: 14 },
-  recommendedTitle: { color: "#050505", fontFamily: "WantedSansB", fontSize: 23, letterSpacing: -1, marginTop: 14 },
+  recommendedTitle: { color: "#050505", fontFamily: "WantedSansB", letterSpacing: -1, marginTop: 14 },
   recommendedMeta: { color: "#4a603c", fontFamily: "WantedSansR", fontSize: 12, marginTop: 5 },
   primaryButton: { alignItems: "center", alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.72)", borderRadius: 999, flexDirection: "row", gap: 6, marginTop: 14, paddingHorizontal: 15, paddingVertical: 8 },
   primaryButtonText: { color: "#17310b", fontFamily: "WantedSansB", fontSize: 12 },
@@ -90,7 +94,7 @@ const styles = StyleSheet.create({
   swipeImage: { alignItems: "center", borderRadius: 12, height: 90, justifyContent: "center", width: 90 },
   swipeCopy: { flex: 1, justifyContent: "center", marginLeft: 12 },
   swipeType: { fontFamily: "WantedSansB", fontSize: 10, marginBottom: 4 },
-  swipeTitle: { fontFamily: "WantedSansB", fontSize: 16, lineHeight: 21 },
+  swipeTitle: { fontFamily: "WantedSansB" },
   swipeMeta: { fontFamily: "WantedSansR", fontSize: 11, marginTop: 5 },
   swipePointsText: { alignSelf: "center", fontFamily: "WantedSansB", fontSize: 12, marginRight: 3 },
   dots: { alignItems: "center", flexDirection: "row", gap: 5, justifyContent: "center", marginTop: 8 },

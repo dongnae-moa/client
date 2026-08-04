@@ -1,41 +1,59 @@
-# Dongnae-Moa mobile design QA
+# Dongnae Moa mobile design QA
 
 ## Evidence
 
-- Reference: `C:\Users\krjih\Downloads\Mobile Devices\Screenshot_20260804_214939_Expo Go.jpg`
-- Navigation motion reference: `C:\Users\krjih\Downloads\Screen_Recording_20260804_205341.mp4`
-- Side-by-side comparison: `C:\Users\krjih\Documents\GEEKs\client\design-qa-comparison.png`
-- Dark implementation: `C:\Users\krjih\Documents\GEEKs\client\device-home-final.png`
-- Light implementation: `C:\Users\krjih\Documents\GEEKs\client\device-settings-light-final.png`
-- Device: connected Android physical device through Expo Go SDK 57, 1080 x 2340 capture
+- Source screen board: `C:\Users\krjih\AppData\Local\Temp\codex-clipboard-d349942d-d4b0-4e6e-8aca-104cc4695ba6.png` (1536 x 1024)
+- Navigation state reference: `C:\Users\krjih\AppData\Local\Temp\codex-clipboard-47f07b0d-86f4-4003-be28-7b5964879419.png` (826 x 226)
+- Full comparison input: `C:\Users\krjih\Documents\GEEKs\client\design-qa-comparison-final.png` (2000 x 1200)
+- Home implementation: `C:\Users\krjih\Documents\GEEKs\client\device-home-equal-nav.png` (1080 x 2340)
+- Mission implementation: `C:\Users\krjih\Documents\GEEKs\client\device-mission-collapsed2.png` (1080 x 2340)
+- Mission map-toggle state: `C:\Users\krjih\Documents\GEEKs\client\device-mission-map-toggle2.png` (1080 x 2340)
+- Device/state: connected Android physical device, Expo Go SDK 57, dark theme, app viewport 1080 x 2340 physical pixels.
+- Normalization: the source board contains three reduced phone captures and the nav reference is a focused crop, so comparisons use aligned content regions rather than pixel-for-pixel device frames. Implementation evidence is native 1080 x 2340 output at the device density.
 
-## Comparison and decisions
+## Findings
 
-The implementation keeps the reference information hierarchy—brand, one recommended mission, secondary missions, progress, and neighborhood context—but reduces repeated list density and colorful decoration. The home Community XP card remains the central `73/100` experience. The supplied video was used for the floating navigation behavior: translucent capsule, fixed circular indicators, center mission action, horizontal-only drag, clamped edges, and spring snap.
+- No actionable P0/P1/P2 issues remain in the requested scope.
+- Typography: Wanted Sans weights preserve the source hierarchy; long mission titles reduce from 18 to 15/16 px and wrap to two lines without overflowing.
+- Spacing and layout: the map and overlapping bottom sheet were removed. The collapsible filter card, view toggle, sort controls, and mission cards now use consistent 10–24 px vertical gaps. Persistent navigation remains reachable without clipping scroll content.
+- Colors and tokens: dark/light theme tokens remain intact. Every selected tab now uses the same filled lime 56 x 56 indicator and glow; every unselected tab is neutral. Mission has no independent background or shadow layer.
+- Image quality: supplied light/dark logo assets remain crisp and clear of the camera safe area. No generated map raster or placeholder map artwork remains.
+- Copy/content: filters cover distance, category, time, difficulty including 어려움, and points. Slider endpoints read 상관없음. Reward copy still explains gifticons, profile decoration, and nearby-store discounts.
 
-## Required fidelity surfaces
+## Interaction evidence
 
-- Themes: dark and light palettes share spacing and typography while surfaces, borders, status-bar contrast, and logo treatment adapt per mode.
-- Brand: `assets/images/로고임.png` is used for light mode and `assets/images/logo-dark.png` is the high-contrast white/green variant for dark mode. The visible logo is reduced to roughly half the previous size.
-- Navigation: five items are present in the requested order—홈, 지도, 미션, 커뮤니티, 마이. 미션 stays centered with a green circular action and checkmark icon; 커뮤니티 uses chat bubbles. The old hamburger and camera mission icon are gone.
-- Liquid glass: the navbar uses `BlurView`, translucent tint, gloss, border, shadow, and a 56 x 56 circular indicator. Only the focused icon springs; label and circle remain stable. The pan gesture is horizontal, clamped, and snaps to the nearest tab.
-- Screens: map, mission detail, community, my page, and settings now share a restrained surface/card system with realistic dummy content and the persistent nav.
+- Filter header collapses and expands while preserving filter state.
+- Category and difficulty chips update selection; 거리/시간/포인트 sliders update continuously with 50 m, 1 minute, and 1 point steps.
+- Moving all three sliders to the far right produced `거리 상관없음 · 시간 상관없음 · 포인트 상관없음` in Android UIAutomator.
+- Sorting offers 가까운 순, 포인트 많은 순, 짧은 시간 순, and 쉬운 순.
+- 목록/지도 toggle is functional. The 지도 state intentionally exposes an integration-ready empty surface and does not mount a map SDK or fake map, per ownership constraints.
+- Navbar drag from 홈 to the right clamped and selected 마이. The indicator remains rooted globally and springs from the finger-release offset to the nearest tab; it no longer resets to the origin before snapping.
+- Before the navigation fix, the 30 fps recording contained one frame with 89.2% white pixels. After switching the bottom-level routes to persistent tabs and theme-locking the native/root backgrounds, a five-route 134-frame recording had no full-screen white frame (maximum white-pixel ratio 0.268%).
+- Pressing 설정 on 마이페이지 opens the settings controls inline; theme changes and all settings rows remain under the 마이 tab.
+- Android UIAutomator exposed all five tabs and selected states. Android `ReactNativeJS:E` logcat output was empty after interaction testing.
 
-## Interactions checked
+## Comparison history
 
-- Fast Refresh physical-device render opened successfully after Metro reload.
-- UI hierarchy exposed all five tab labels through Android UIAutomator.
-- Tapped 지도, 미션, 커뮤니티, 마이 and verified titles: `동네 지도`, `미션 상세`, `커뮤니티`, `마이페이지`.
-- Swiped the navbar from the right edge to the left; it clamped and spring-snapped to 홈.
-- Opened 설정 from 마이페이지 and switched 다크 → 화이트; verified the light surface, dark text, and light-mode navbar.
-- Home mission rail still snaps between four Notion-backed dummy cards.
+1. Earlier P1: a native map/map raster conflicted with the requested ownership boundary and overlapped the mission card.
+   - Fix: removed all map rendering and generated map assets, then replaced the mission surface with filters and results.
+   - Post-fix evidence: `device-mission-collapsed2.png`.
+2. Earlier P1: stack route replacement briefly exposed the native light window between screens; frame 25 of `nav-equal-drag.mp4` measured 89.2% white pixels.
+   - Fix: bottom destinations now use persistent, non-detaching tabs; navigation uses tab navigation instead of route replacement; React Navigation, system UI, gesture root, and scene backgrounds all share the active app theme.
+   - Post-fix evidence: `nav-no-flash-final.mp4`, 134 analyzed frames, no full-screen white frame.
+3. Earlier P1: mission had a separate green/elevated background while other selected tabs used a neutral moving indicator; the idle mission elevation could render as an octagonal underlay on Android.
+   - Fix: removed the mission-only background/elevation and unified all five tabs behind one filled lime circular indicator with the same glow.
+   - Post-fix evidence: `device-home-equal-nav.png` and `device-mission-collapsed2.png`.
+4. Earlier P2: the mission surface was too dense and did not provide filtering, sorting, or view controls.
+   - Fix: added a collapsible filter, fine-grained sliders with a no-preference endpoint, four sort modes, and list/map toggle.
+   - Post-fix evidence: `device-mission-collapsed2.png` and `device-mission-map-toggle2.png`.
 
-## Validation
+## Focused comparison
 
-- `npx.cmd tsc --noEmit` passed.
-- `git diff --check` passed.
-- Metro Fast Refresh physical-device render passed.
+- The navigation region required focused comparison because selection fill, glow, and the removed mission-only layer are too small to judge from the three-screen board. `design-qa-comparison-final.png` pairs the focused nav source with the final home-selected implementation.
+- The mission region is compared as a product-direction adaptation rather than a literal map clone: the user explicitly removed map ownership from this change, so the implementation intentionally preserves the source's minimal dark cards and hierarchy while replacing map content with filter/list controls.
 
-## Final result
+## Follow-up polish
 
-passed
+- P3: when the separate map implementation lands, replace only the prepared map-state body and retain the current filter, sort, and view state contract.
+
+final result: passed
