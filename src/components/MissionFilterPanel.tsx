@@ -127,16 +127,17 @@ function RangeSlider({
   );
 }
 
-function ChipRow({
+// 옵션 타입을 그대로 흘려보내야 난이도처럼 리터럴 유니온인 필터에도 쓸 수 있다.
+function ChipRow<T extends string>({
   label,
   options,
   value,
   onChange,
 }: {
   label: string;
-  options: readonly string[];
-  value: string;
-  onChange: (value: string) => void;
+  options: readonly T[];
+  value: T;
+  onChange: (value: T) => void;
 }) {
   const { colors } = useTheme();
   return (
