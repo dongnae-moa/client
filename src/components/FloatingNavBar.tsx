@@ -45,6 +45,12 @@ const TABS: Array<{
 }> = [
   { label: "홈", path: "/", icon: "home-outline", activeIcon: "home" },
   {
+    label: "상점",
+    path: "/store",
+    icon: "storefront-outline",
+    activeIcon: "storefront",
+  },
+  {
     // 지도와 미션은 /mission 한 화면(지도 + 상단바 필터)으로 합쳐져 있다.
     label: "미션",
     path: "/mission",

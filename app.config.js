@@ -47,6 +47,8 @@ export default {
         },
       ],
       "expo-font",
+      // 액세스·리프레시 토큰을 SecureStore에 보관한다(src/auth/AuthContext.tsx).
+      "expo-secure-store",
       [
         "expo-location",
         {
@@ -61,6 +63,9 @@ export default {
     },
     // 💡 앱 내 일반 JS/TS 코드에서 접근해야 하는 변수는 extra에 전달할 수도 있습니다.
     extra: {
+      // 백엔드 API 주소. src/api/client.ts가 이 값을 먼저 읽는다.
+      apiUrl:
+        process.env.EXPO_PUBLIC_API_URL ?? "http://165.140.22.60:8080",
       googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       // 지도 스타일(Cloud-based map styling) ID. 앱 테마에 맞춰 골라 쓴다.
       googleMapIdDark:
