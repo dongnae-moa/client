@@ -11,7 +11,7 @@ import { useAuth } from "../auth/AuthContext";
 import AppHeader from "../components/AppHeader";
 import MissionComposer from "../components/MissionComposer";
 import { neighborhoodMetrics } from "../data/mock";
-import type { Mission } from "../data/missions";
+import { formatDistance, type Mission } from "../data/missions";
 import { useCurrentLocation } from "../hooks/useCurrentLocation";
 import { useTheme } from "../theme/ThemeContext";
 
@@ -122,7 +122,7 @@ export default function Index() {
           <View style={[styles.recommendedCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={styles.recommendedImageWrap}>
               <Image source={recommendedMission.imageUrl} style={styles.recommendedImage} contentFit="cover" transition={160} />
-              <View style={styles.imageTopRow}><View style={styles.photoBadge}><Ionicons name="navigate" size={13} color="#17310b" /><Text style={styles.photoBadgeText}>내 주변 {recommendedMission.distanceMeters}m</Text></View><View style={styles.pointBadge}><Ionicons name="star" size={13} color="#17310b" /><Text style={styles.pointBadgeText}>{recommendedMission.rewardPoint}P</Text></View></View>
+              <View style={styles.imageTopRow}><View style={styles.photoBadge}><Ionicons name="navigate" size={13} color="#17310b" /><Text style={styles.photoBadgeText}>{formatDistance(recommendedMission.distanceMeters)}</Text></View><View style={styles.pointBadge}><Ionicons name="star" size={13} color="#17310b" /><Text style={styles.pointBadgeText}>{recommendedMission.rewardPoint}P</Text></View></View>
               <View style={styles.photoCaption}><Ionicons name="camera-outline" size={12} color="#fff" /><Text style={styles.photoCaptionText}>현장 사진</Text></View>
             </View>
             <View style={styles.recommendedCopy}>
@@ -156,7 +156,7 @@ export default function Index() {
           <>
         <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>다른 미션</Text><Text style={[styles.sectionHint, { color: colors.muted }]}>옆으로 넘겨보세요</Text></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} snapToInterval={missionCardWidth + 12} decelerationRate="fast" contentContainerStyle={styles.missionRail} onMomentumScrollEnd={(event) => setActiveOtherMission(Math.min(otherMissions.length - 1, Math.round(event.nativeEvent.contentOffset.x / (missionCardWidth + 12))))}>
-          {otherMissions.map((item) => <View key={item.id} style={[styles.swipeCard, { width: missionCardWidth, backgroundColor: colors.surface, borderColor: colors.border }]}><Image source={item.imageUrl} style={[styles.swipeImage, { backgroundColor: colors.greenSoft }]} contentFit="cover" transition={160} /><View style={styles.swipeCopy}><Text style={[styles.swipeType, { color: colors.greenInk }]}>{item.neighborhood.name}</Text><MissionTitle compact color={colors.text}>{item.title}</MissionTitle><Text style={[styles.swipeMeta, { color: colors.muted }]}>{item.distanceMeters}m · 약 {item.minutes}분</Text></View><Text style={[styles.swipePointsText, { color: colors.orange }]}>{item.rewardPoint}P</Text></View>)}
+          {otherMissions.map((item) => <View key={item.id} style={[styles.swipeCard, { width: missionCardWidth, backgroundColor: colors.surface, borderColor: colors.border }]}><Image source={item.imageUrl} style={[styles.swipeImage, { backgroundColor: colors.greenSoft }]} contentFit="cover" transition={160} /><View style={styles.swipeCopy}><Text style={[styles.swipeType, { color: colors.greenInk }]}>{item.neighborhood.name}</Text><MissionTitle compact color={colors.text}>{item.title}</MissionTitle><Text style={[styles.swipeMeta, { color: colors.muted }]}>{formatDistance(item.distanceMeters)} · 약 {item.minutes}분</Text></View><Text style={[styles.swipePointsText, { color: colors.orange }]}>{item.rewardPoint}P</Text></View>)}
         </ScrollView>
         <View style={styles.dots}>{otherMissions.map((item, index) => <View key={item.id} style={[styles.dot, { backgroundColor: colors.border }, index === activeOtherMission && { backgroundColor: colors.green, width: 16 }]} />)}</View>
           </>
@@ -192,7 +192,7 @@ export default function Index() {
         <View style={[styles.surfaceCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={styles.sectionCardHeader}><View style={styles.sectionHeadingRow}><Ionicons name="business-outline" size={19} color={colors.green} /><Text style={[styles.surfaceTitle, { color: colors.text }]}>우리 동네 현황</Text></View><Text style={[styles.period, { color: colors.muted }]}>이번 주</Text></View><View style={[styles.metricGrid, { borderBottomColor: colors.border, borderTopColor: colors.border }]}>{neighborhoodMetrics.map((metric, index) => <View key={metric.label} style={[styles.metric, { borderRightColor: colors.border }, index === 3 && styles.metricLast]}><Ionicons name={metric.icon} size={21} color={colors[metric.color]} /><Text style={[styles.metricLabel, { color: colors.muted }]}>{metric.label}</Text><Text style={[styles.metricValue, { color: colors.text }]}>{metric.value}</Text></View>)}</View><Pressable style={styles.cardLinkRow} onPress={() => router.push("/community")}><Text style={[styles.cardLink, { color: colors.greenInk }]}>동네 현황 더 보기</Text><Ionicons name="chevron-forward" size={16} color={colors.greenInk} /></Pressable></View>
 
         {quickMission ? (
-          <View style={[styles.surfaceCard, styles.dailyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.dailyImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="timer-outline" size={26} color={colors.green} /></View><View style={styles.dailyCopy}><Text style={[styles.dailyKicker, { color: colors.muted }]}>가장 빨리 끝나는 미션</Text><Text numberOfLines={2} style={[styles.dailyTitle, { color: colors.text }]}>{quickMission.title}</Text><Text style={[styles.dailyMeta, { color: colors.greenInk }]}>{quickMission.distanceMeters}m · 약 {quickMission.minutes}분</Text></View><Pressable onPress={() => router.push("/mission")} style={[styles.startButton, { backgroundColor: colors.green }]}><Text style={styles.startButtonText}>시작하기</Text></Pressable></View>
+          <View style={[styles.surfaceCard, styles.dailyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.dailyImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="timer-outline" size={26} color={colors.green} /></View><View style={styles.dailyCopy}><Text style={[styles.dailyKicker, { color: colors.muted }]}>가장 빨리 끝나는 미션</Text><Text numberOfLines={2} style={[styles.dailyTitle, { color: colors.text }]}>{quickMission.title}</Text><Text style={[styles.dailyMeta, { color: colors.greenInk }]}>{formatDistance(quickMission.distanceMeters)} · 약 {quickMission.minutes}분</Text></View><Pressable onPress={() => router.push("/mission")} style={[styles.startButton, { backgroundColor: colors.green }]}><Text style={styles.startButtonText}>시작하기</Text></Pressable></View>
         ) : null}
       </ScrollView>
 

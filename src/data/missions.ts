@@ -303,6 +303,20 @@ export function buildDummyMissions(anchor: Coords = DUMMY_ANCHOR): Mission[] {
 /** 청운동 기준 더미 목록. 위치가 필요 없는 화면에서 바로 쓸 수 있다. */
 export const dummyMissions = buildDummyMissions();
 
+/** 이 거리보다 가까우면 미터 대신 "근처"로 보여준다. */
+export const NEARBY_DISTANCE_METERS = 10;
+
+/**
+ * 거리 표시 문구. 서버가 소수점까지 주더라도 화면에는 반올림한 정수만 쓴다.
+ *
+ * 아주 가까울 때 "3m"처럼 적으면 오히려 위치가 정확한 것처럼 보이는데, GPS 오차가 그보다
+ * 크기 때문에 "근처"로 눕힌다. 거리 필터는 반올림하지 않은 원래 값으로 계산한다.
+ */
+export function formatDistance(distanceMeters: number) {
+  if (distanceMeters < NEARBY_DISTANCE_METERS) return "근처";
+  return `${Math.round(distanceMeters)}m`;
+}
+
 const difficultyRank = { 쉬움: 0, 보통: 1, 어려움: 2 } as const;
 
 /** 필터 기본값과 다른 항목 수. 상단바 필터 버튼의 배지에 쓴다. */

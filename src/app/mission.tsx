@@ -26,6 +26,7 @@ import {
   countActiveFilters,
   DEFAULT_FILTERS,
   filterMissions,
+  formatDistance,
   statusFilters,
   statusMeta,
   summarizeFilters,
@@ -307,8 +308,9 @@ export default function MissionScreen() {
                       <Text
                         style={[styles.missionMeta, { color: colors.muted }]}
                       >
-                        {mission.neighborhood.name} · {mission.distanceMeters}m
-                        · 약 {mission.minutes}분
+                        {mission.neighborhood.name} ·{" "}
+                        {formatDistance(mission.distanceMeters)} · 약{" "}
+                        {mission.minutes}분
                       </Text>
                       <Text
                         style={[styles.missionAuthor, { color: colors.faint }]}

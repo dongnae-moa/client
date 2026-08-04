@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
-import { statusMeta, type Mission } from "../data/missions";
+import { formatDistance, statusMeta, type Mission } from "../data/missions";
 import { useTheme } from "../theme/ThemeContext";
 
 type MissionDetailSheetProps = {
@@ -122,7 +122,7 @@ export default function MissionDetailSheet({
             </Text>
             <Text style={[styles.metaDivider, { color: colors.faint }]}>·</Text>
             <Text style={[styles.metaText, { color: colors.muted }]}>
-              {mission.distanceMeters}m · 약 {mission.minutes}분
+              {formatDistance(mission.distanceMeters)} · 약 {mission.minutes}분
             </Text>
           </View>
           <View style={styles.metaRow}>
