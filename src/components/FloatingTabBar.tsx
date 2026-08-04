@@ -48,12 +48,12 @@ export default function FloatingBottomNav() {
               <Ionicons
                 name={isActive ? tab.activeIcon : tab.icon}
                 size={24}
-                color={isActive ? "#101010" : "#b0b0b0"}
+                color={isActive ? "#ffffff" : "#9c9c9c"}
               />
               <Text
                 style={[
                   styles.label,
-                  { color: isActive ? "#101010" : "#b0b0b0" },
+                  { color: isActive ? "#ffffff" : "#9c9c9c" },
                 ]}
               >
                 {tab.label}
@@ -79,17 +79,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     alignSelf: "stretch",
-    marginHorizontal: 24,
-    marginBottom: 24,
-    backgroundColor: "#ffffff",
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: "#191919",
     borderRadius: 30,
     borderWidth: 1,
-    borderColor: "#e5e5e5",
-    paddingVertical: 12,
-    paddingHorizontal: 28,
+    borderColor: "#2f2f2f",
+    paddingVertical: 9,
+    paddingHorizontal: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.28,
     shadowRadius: 12,
     elevation: 6,
   },
