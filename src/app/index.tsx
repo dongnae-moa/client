@@ -2,10 +2,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 import Svg, { Circle } from "react-native-svg";
+import { useAuth } from "../auth/AuthContext";
 import AppHeader from "../components/AppHeader";
+import MissionComposer from "../components/MissionComposer";
 import { missionCards, neighborhoodMetrics } from "../data/mock";
 import { useTheme } from "../theme/ThemeContext";
 
@@ -34,8 +36,19 @@ export default function Index() {
   const router = useRouter();
   const { colors, mode } = useTheme();
   const { width } = useWindowDimensions();
+  const { user } = useAuth();
   const [activeOtherMission, setActiveOtherMission] = useState(0);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [createdNotice, setCreatedNotice] = useState<string | null>(null);
   const missionCardWidth = Math.min(width - 40, 320);
+
+  // 등록 안내는 잠깐만 띄운다.
+  useEffect(() => {
+    if (!createdNotice) return;
+    const timer = setTimeout(() => setCreatedNotice(null), 2600);
+    return () => clearTimeout(timer);
+  }, [createdNotice]);
+
   const recommendedMission = missionCards[0];
   const otherMissions = missionCards.slice(1);
 
@@ -67,6 +80,28 @@ export default function Index() {
         </ScrollView>
         <View style={styles.dots}>{otherMissions.map((item, index) => <View key={item.shortTitle} style={[styles.dot, { backgroundColor: colors.border }, index === activeOtherMission && { backgroundColor: colors.green, width: 16 }]} />)}</View>
 
+        {/* 홈은 카드가 이어지는 화면이라 만들기도 카드 형태로 둔다(미션 탭은 플로팅 버튼). */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="미션 만들기"
+          onPress={() => setComposerOpen(true)}
+          style={({ pressed }) => [styles.createCard, { backgroundColor: colors.surface, borderColor: colors.green }, pressed && styles.pressed]}
+        >
+          <View style={[styles.createIcon, { backgroundColor: colors.greenSoft }]}><Ionicons name="add" size={24} color={colors.green} /></View>
+          <View style={styles.createCopy}>
+            <Text style={[styles.createTitle, { color: colors.text }]}>우리 동네 미션 만들기</Text>
+            <Text style={[styles.createDetail, { color: colors.muted }]}>사진과 설명만 올리면 AI가 시간·포인트·체크 포인트를 정리해줘요.</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        </Pressable>
+
+        {createdNotice ? (
+          <View style={[styles.createdNotice, { backgroundColor: colors.greenSoft }]}>
+            <Ionicons name="checkmark-circle" size={16} color="#17310b" />
+            <Text style={styles.createdNoticeText}>{createdNotice}</Text>
+          </View>
+        ) : null}
+
         <View style={[styles.progressCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={styles.progressHeader}><View><Text style={[styles.progressEyebrow, { color: colors.muted }]}>COMMUNITY XP · 동네 성장</Text><Text style={[styles.progressHeading, { color: colors.text }]}>서초2동 레벨 7</Text></View><View style={[styles.communityBadge, { backgroundColor: colors.greenSoft }]}><Ionicons name="people" size={15} color={colors.greenInk} /><Text style={[styles.communityBadgeText, { color: colors.greenInk }]}>주민 공동</Text></View></View>
           <View style={styles.progressBody}><ProgressRing colors={colors} /><View style={styles.progressCopy}><Text style={[styles.progressTitle, { color: colors.text }]}>동네 레벨 8까지 27 XP</Text><Text style={[styles.progressDescription, { color: colors.muted }]}>주민 83명의 활동이 함께 쌓여요.</Text><View style={[styles.personalXpCard, { backgroundColor: colors.surfaceRaised }]}><View><Text style={[styles.personalXpEyebrow, { color: colors.muted }]}>PERSONAL XP · 나의 성장</Text><Text style={[styles.personalXpTitle, { color: colors.text }]}>개인 레벨 12 · Gold</Text></View><View style={styles.personalXpValue}><Text style={[styles.personalXpNumber, { color: colors.purple }]}>240</Text><Text style={[styles.personalXpTotal, { color: colors.muted }]}>/300 XP</Text></View></View></View></View>
@@ -76,6 +111,16 @@ export default function Index() {
 
         <View style={[styles.surfaceCard, styles.dailyCard, { backgroundColor: colors.surface, borderColor: colors.border }]}><View style={[styles.dailyImage, { backgroundColor: colors.greenSoft }]}><Ionicons name="timer-outline" size={26} color={colors.green} /></View><View style={styles.dailyCopy}><Text style={[styles.dailyKicker, { color: colors.muted }]}>오늘의 3분 미션</Text><Text style={[styles.dailyTitle, { color: colors.text }]}>공원 안내판 상태 확인하기</Text><Text style={[styles.dailyMeta, { color: colors.greenInk }]}>180m · 약 2분</Text></View><Pressable onPress={() => router.push("/mission")} style={[styles.startButton, { backgroundColor: colors.green }]}><Text style={styles.startButtonText}>시작하기</Text></Pressable></View>
       </ScrollView>
+
+      <MissionComposer
+        visible={composerOpen}
+        neighborhoodName={user?.neighborhoodName}
+        onClose={() => setComposerOpen(false)}
+        onSubmit={(draft) => {
+          setComposerOpen(false);
+          setCreatedNotice(`"${draft.title}" 미션을 등록 요청했어요.`);
+        }}
+      />
     </View>
   );
 }
@@ -102,6 +147,13 @@ const styles = StyleSheet.create({
   recommendedTitle: { fontFamily: "WantedSansB", letterSpacing: -1, marginTop: 10 },
   recommendedMeta: { fontFamily: "WantedSansR", fontSize: 11, marginTop: 5 },
   primaryButton: { alignItems: "center", alignSelf: "flex-start", borderRadius: 999, flexDirection: "row", gap: 6, marginTop: 13, paddingHorizontal: 15, paddingVertical: 9 },
+  createCard: { alignItems: "center", borderRadius: 18, borderStyle: "dashed", borderWidth: 1.5, flexDirection: "row", marginTop: 16, padding: 14 },
+  createIcon: { alignItems: "center", borderRadius: 14, height: 46, justifyContent: "center", width: 46 },
+  createCopy: { flex: 1, marginLeft: 12 },
+  createTitle: { fontFamily: "WantedSansB", fontSize: 15 },
+  createDetail: { fontFamily: "WantedSansR", fontSize: 10, lineHeight: 15, marginTop: 4 },
+  createdNotice: { alignItems: "center", borderRadius: 14, flexDirection: "row", gap: 7, marginTop: 10, paddingHorizontal: 12, paddingVertical: 11 },
+  createdNoticeText: { color: "#17310b", flex: 1, fontFamily: "WantedSansB", fontSize: 11 },
   primaryButtonText: { color: "#17310b", fontFamily: "WantedSansB", fontSize: 12 },
   pressed: { opacity: 0.76, transform: [{ scale: 0.98 }] },
   sectionHeader: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between", marginTop: 22 },
