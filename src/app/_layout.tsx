@@ -68,6 +68,7 @@ function AppRoot() {
           <Tabs.Screen name="mission" />
           <Tabs.Screen name="community" />
           <Tabs.Screen name="my" />
+          <Tabs.Screen name="settings" options={{ href: null }} />
         </Tabs>
         <FloatingNavBar />
       </GestureHandlerRootView>

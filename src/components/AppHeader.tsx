@@ -11,7 +11,7 @@ export default function AppHeader({ title, back = false, settings = false, onSet
     <View style={styles.header}>
       {back ? <Pressable accessibilityLabel="뒤로 가기" onPress={() => router.back()} style={styles.iconButton}><Ionicons name="chevron-back" size={24} color={colors.text} /></Pressable> : <View style={styles.iconButton} />}
       {title ? <Text style={[styles.title, { color: colors.text }]}>{title}</Text> : <Image source={mode === "dark" ? require("@/assets/images/logo-dark.png") : require("@/assets/images/로고임.png")} style={styles.logo} contentFit="contain" />}
-      {settings ? <Pressable accessibilityLabel="설정" onPress={onSettingsPress} style={styles.iconButton}><Ionicons name="settings-outline" size={21} color={colors.text} /></Pressable> : <View style={styles.iconButton} />}
+      {settings ? <Pressable accessibilityLabel="설정" onPress={onSettingsPress ?? (() => router.push("/settings"))} style={styles.iconButton}><Ionicons name="settings-outline" size={21} color={colors.text} /></Pressable> : <View style={styles.iconButton} />}
     </View>
   );
 }

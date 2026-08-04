@@ -29,7 +29,7 @@
 - 목록/지도 toggle is functional. The 지도 state intentionally exposes an integration-ready empty surface and does not mount a map SDK or fake map, per ownership constraints.
 - Navbar drag from 홈 to the right clamped and selected 마이. The indicator remains rooted globally and springs from the finger-release offset to the nearest tab; it no longer resets to the origin before snapping.
 - Before the navigation fix, the 30 fps recording contained one frame with 89.2% white pixels. After switching the bottom-level routes to persistent tabs and theme-locking the native/root backgrounds, a five-route 134-frame recording had no full-screen white frame (maximum white-pixel ratio 0.268%).
-- Pressing 설정 on 마이페이지 opens the settings controls inline; theme changes and all settings rows remain under the 마이 tab.
+- Pressing 설정 on 마이페이지 opens the separate settings page while the persistent navbar keeps 마이 selected.
 - Android UIAutomator exposed all five tabs and selected states. Android `ReactNativeJS:E` logcat output was empty after interaction testing.
 
 ## Comparison history

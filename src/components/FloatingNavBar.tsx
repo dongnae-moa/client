@@ -60,7 +60,8 @@ export default function FloatingNavBar() {
   const { colors, mode } = useTheme();
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [contentWidth, setContentWidth] = useState(0);
-  const focusedIndex = Math.max(0, TABS.findIndex((tab) => pathname === tab.path));
+  const matchedIndex = TABS.findIndex((tab) => pathname === tab.path);
+  const focusedIndex = pathname === "/settings" ? 4 : Math.max(0, matchedIndex);
   const requestedIndex = useRef(focusedIndex);
   const indicatorIndex = useSharedValue(focusedIndex);
   const dragOffset = useSharedValue(0);
