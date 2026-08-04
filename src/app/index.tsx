@@ -46,11 +46,18 @@ export default function Index() {
         <Text style={[styles.greeting, { color: colors.muted }]}>오늘 우리 동네에서</Text>
         <Text style={[styles.heroTitle, { color: colors.text }]}>가볍게 바꿔볼까요?</Text>
 
-        <View style={[styles.recommendedCard, { backgroundColor: colors.greenSoft }]}>
-          <View style={styles.cardEyebrowRow}><Text style={styles.cardEyebrow}>추천 미션 · {mission.distance}</Text><Text style={styles.pointsText}>★ {mission.points}</Text></View>
-          <MissionTitle>{mission.shortTitle}</MissionTitle>
-          <Text style={styles.recommendedMeta}>{mission.type} · {mission.time} · temp_username</Text>
-          <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]} onPress={() => router.push("/mission")}><Text style={styles.primaryButtonText}>미션 살펴보기</Text><Ionicons name="arrow-forward" size={18} color="#17310b" /></Pressable>
+        <View style={[styles.recommendedCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.recommendedImageWrap}>
+            <Image source={require("@/assets/images/omg.png")} style={styles.recommendedImage} contentFit="cover" transition={160} />
+            <View style={styles.imageTopRow}><View style={styles.photoBadge}><Ionicons name="navigate" size={13} color="#17310b" /><Text style={styles.photoBadgeText}>내 주변 {mission.distance}</Text></View><View style={styles.pointBadge}><Ionicons name="star" size={13} color="#17310b" /><Text style={styles.pointBadgeText}>{mission.points}</Text></View></View>
+            <View style={styles.photoCaption}><Ionicons name="camera-outline" size={12} color="#fff" /><Text style={styles.photoCaptionText}>현장 사진</Text></View>
+          </View>
+          <View style={styles.recommendedCopy}>
+            <View style={styles.cardEyebrowRow}><Text style={[styles.cardEyebrow, { color: colors.green }]}>추천 미션</Text><Text style={[styles.recommendedType, { color: colors.muted }]}>{mission.type}</Text></View>
+            <MissionTitle color={colors.text}>{mission.shortTitle}</MissionTitle>
+            <Text style={[styles.recommendedMeta, { color: colors.muted }]}>{mission.time} · temp_username 제안</Text>
+            <Pressable style={({ pressed }) => [styles.primaryButton, { backgroundColor: colors.green }, pressed && styles.pressed]} onPress={() => router.push("/mission")}><Text style={styles.primaryButtonText}>미션 살펴보기</Text><Ionicons name="arrow-forward" size={18} color="#17310b" /></Pressable>
+          </View>
         </View>
 
         <View style={styles.sectionHeader}><Text style={[styles.sectionTitle, { color: colors.text }]}>다른 미션</Text><Text style={[styles.sectionHint, { color: colors.muted }]}>옆으로 넘겨보세요</Text></View>
@@ -77,13 +84,23 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 148, paddingHorizontal: 20, paddingTop: 26 },
   greeting: { fontFamily: "WantedSansR", fontSize: 13, marginTop: 6 },
   heroTitle: { fontFamily: "WantedSansB", fontSize: 27, letterSpacing: -1, marginBottom: 15, marginTop: 4 },
-  recommendedCard: { borderRadius: 20, minHeight: 174, padding: 16 },
+  recommendedCard: { borderRadius: 22, borderWidth: 1, minHeight: 300, overflow: "hidden" },
+  recommendedImageWrap: { height: 138, position: "relative" },
+  recommendedImage: { height: "100%", width: "100%" },
+  imageTopRow: { flexDirection: "row", justifyContent: "space-between", left: 12, position: "absolute", right: 12, top: 12 },
+  photoBadge: { alignItems: "center", backgroundColor: "rgba(196,246,156,0.94)", borderRadius: 99, flexDirection: "row", gap: 4, paddingHorizontal: 9, paddingVertical: 6 },
+  photoBadgeText: { color: "#17310b", fontFamily: "WantedSansB", fontSize: 9 },
+  pointBadge: { alignItems: "center", backgroundColor: "rgba(255,211,106,0.95)", borderRadius: 99, flexDirection: "row", gap: 4, paddingHorizontal: 9, paddingVertical: 6 },
+  pointBadgeText: { color: "#17310b", fontFamily: "WantedSansB", fontSize: 10 },
+  photoCaption: { alignItems: "center", backgroundColor: "rgba(0,0,0,0.62)", borderRadius: 99, bottom: 10, flexDirection: "row", gap: 4, left: 11, paddingHorizontal: 8, paddingVertical: 5, position: "absolute" },
+  photoCaptionText: { color: "#fff", fontFamily: "WantedSansB", fontSize: 8 },
+  recommendedCopy: { padding: 16 },
   cardEyebrowRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  cardEyebrow: { color: "#2c461c", fontFamily: "WantedSansB", fontSize: 13 },
-  pointsText: { color: "#24310e", fontFamily: "WantedSansB", fontSize: 14 },
-  recommendedTitle: { color: "#050505", fontFamily: "WantedSansB", letterSpacing: -1, marginTop: 14 },
-  recommendedMeta: { color: "#4a603c", fontFamily: "WantedSansR", fontSize: 12, marginTop: 5 },
-  primaryButton: { alignItems: "center", alignSelf: "flex-start", backgroundColor: "rgba(255,255,255,0.72)", borderRadius: 999, flexDirection: "row", gap: 6, marginTop: 14, paddingHorizontal: 15, paddingVertical: 8 },
+  cardEyebrow: { fontFamily: "WantedSansB", fontSize: 11 },
+  recommendedType: { fontFamily: "WantedSansR", fontSize: 10 },
+  recommendedTitle: { fontFamily: "WantedSansB", letterSpacing: -1, marginTop: 10 },
+  recommendedMeta: { fontFamily: "WantedSansR", fontSize: 11, marginTop: 5 },
+  primaryButton: { alignItems: "center", alignSelf: "flex-start", borderRadius: 999, flexDirection: "row", gap: 6, marginTop: 13, paddingHorizontal: 15, paddingVertical: 9 },
   primaryButtonText: { color: "#17310b", fontFamily: "WantedSansB", fontSize: 12 },
   pressed: { opacity: 0.76, transform: [{ scale: 0.98 }] },
   sectionHeader: { alignItems: "baseline", flexDirection: "row", justifyContent: "space-between", marginTop: 22 },
