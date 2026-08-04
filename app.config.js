@@ -12,6 +12,10 @@ export default {
     userInterfaceStyle: "automatic",
     ios: {
       icon: "./assets/expo.icon",
+      config: {
+        // PROVIDER_GOOGLE을 쓰므로 iOS도 키가 있어야 지도가 렌더링된다.
+        googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+      },
     },
     android: {
       adaptiveIcon: {
@@ -43,6 +47,13 @@ export default {
         },
       ],
       "expo-font",
+      [
+        "expo-location",
+        {
+          locationWhenInUsePermission:
+            "내 주변 미션을 지도에 보여주기 위해 위치를 사용합니다.",
+        },
+      ],
     ],
     experiments: {
       typedRoutes: true,
@@ -51,6 +62,12 @@ export default {
     // 💡 앱 내 일반 JS/TS 코드에서 접근해야 하는 변수는 extra에 전달할 수도 있습니다.
     extra: {
       googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+      // 지도 스타일(Cloud-based map styling) ID. 앱 테마에 맞춰 골라 쓴다.
+      googleMapIdDark:
+        process.env.EXPO_PUBLIC_GOOGLE_MAP_ID_DARK ??
+        "449973237f53c8cbcd81d11f",
+      // 라이트용 Map ID를 만들면 여기에 넣는다. 비워두면 구글 기본(라이트) 스타일을 쓴다.
+      googleMapIdLight: process.env.EXPO_PUBLIC_GOOGLE_MAP_ID_LIGHT,
     },
   },
 };

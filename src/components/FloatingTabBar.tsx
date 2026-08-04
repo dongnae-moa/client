@@ -12,12 +12,12 @@ type TabItem = {
 
 const TABS: TabItem[] = [
   { label: "홈", path: "/", icon: "home-outline", activeIcon: "home" },
-  { label: "지도", path: "/map", icon: "map-outline", activeIcon: "map" },
   {
+    // 지도와 미션은 /mission 한 화면으로 합쳐졌다.
     label: "미션",
     path: "/mission",
-    icon: "flag-outline",
-    activeIcon: "flag",
+    icon: "map-outline",
+    activeIcon: "map",
   },
   {
     label: "마이",
