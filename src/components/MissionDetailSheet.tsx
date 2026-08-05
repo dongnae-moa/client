@@ -2,14 +2,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { SlideInDown, SlideOutDown } from "react-native-reanimated";
+import type { Participation } from "../api/participations";
 import { formatDistance, statusMeta, type Mission } from "../data/missions";
 import { useTheme } from "../theme/ThemeContext";
 
 type MissionDetailSheetProps = {
   mission: Mission;
-  /** 진행 중으로 표시된 미션인지. */
-  started: boolean;
-  onToggleStart: () => void;
+  participation: Participation | null;
+  joining: boolean;
+  actionError?: string | null;
+  onStart: () => void;
+  onOpenProof: () => void;
   onClose: () => void;
   /** 지도에서 위치 보기(목록 모드에서만 노출). */
   onShowOnMap?: () => void;
@@ -23,8 +26,11 @@ type MissionDetailSheetProps = {
 /** 지도 핀 또는 목록 카드를 눌렀을 때 아래에서 올라오는 미션 상세. */
 export default function MissionDetailSheet({
   mission,
-  started,
-  onToggleStart,
+  participation,
+  joining,
+  actionError,
+  onStart,
+  onOpenProof,
   onClose,
   onShowOnMap,
   bottomOffset,
@@ -40,6 +46,24 @@ export default function MissionDetailSheet({
       : status.tone === "muted"
         ? colors.faint
         : colors.greenInk;
+  const participationStatus = participation?.status ?? null;
+  const canSubmitProof = participationStatus === "JOINED";
+  const actionDisabled =
+    joining ||
+    participationStatus === "SUBMITTED" ||
+    participationStatus === "APPROVED" ||
+    participationStatus === "REJECTED";
+  const actionLabel = joining
+    ? "미션 시작 중..."
+    : participationStatus === "JOINED"
+      ? "완료 인증 제출"
+      : participationStatus === "SUBMITTED"
+        ? "검토 대기 중"
+        : participationStatus === "APPROVED"
+          ? "미션 완료"
+          : participationStatus === "REJECTED"
+            ? "인증 반려됨"
+            : "미션 시작하기";
 
   return (
     <Animated.View
@@ -151,19 +175,70 @@ export default function MissionDetailSheet({
             </View>
           ))}
 
-          {started ? (
+          {participation ? (
             <View
               style={[
                 styles.startedBanner,
                 {
-                  backgroundColor: colors.greenSoft,
-                  borderColor: colors.green,
+                  backgroundColor:
+                    participationStatus === "REJECTED"
+                      ? colors.surfaceRaised
+                      : colors.greenSoft,
+                  borderColor:
+                    participationStatus === "REJECTED"
+                      ? colors.orange
+                      : colors.green,
                 },
               ]}
             >
-              <Ionicons name="walk-outline" size={15} color="#17310b" />
-              <Text style={styles.startedText}>
-                진행 중인 미션이에요. 현장에서 체크 포인트를 확인해보세요.
+              <Ionicons
+                name={
+                  participationStatus === "JOINED"
+                    ? "walk-outline"
+                    : participationStatus === "SUBMITTED"
+                      ? "time-outline"
+                      : participationStatus === "APPROVED"
+                        ? "checkmark-circle-outline"
+                        : "alert-circle-outline"
+                }
+                size={15}
+                color={
+                  participationStatus === "REJECTED"
+                    ? colors.orange
+                    : colors.greenInk
+                }
+              />
+              <Text
+                style={[
+                  styles.startedText,
+                  {
+                    color:
+                      participationStatus === "REJECTED"
+                        ? colors.text
+                        : colors.greenInk,
+                  },
+                ]}
+              >
+                {participationStatus === "JOINED"
+                  ? "진행 중인 미션이에요. 완료 후 사진이나 설명을 제출해주세요."
+                  : participationStatus === "SUBMITTED"
+                    ? "인증을 제출했어요. 등록자의 검토를 기다리고 있어요."
+                    : participationStatus === "APPROVED"
+                      ? "인증이 승인되어 미션을 완료했어요."
+                      : `인증이 반려됐어요${participation.rejectionReason ? `: ${participation.rejectionReason}` : "."}`}
+              </Text>
+            </View>
+          ) : null}
+          {actionError ? (
+            <View
+              style={[
+                styles.actionError,
+                { backgroundColor: colors.surfaceRaised },
+              ]}
+            >
+              <Ionicons name="alert-circle-outline" size={14} color={colors.orange} />
+              <Text style={[styles.actionErrorText, { color: colors.text }]}>
+                {actionError}
               </Text>
             </View>
           ) : null}
@@ -188,22 +263,29 @@ export default function MissionDetailSheet({
           ) : null}
           <Pressable
             accessibilityRole="button"
-            onPress={onToggleStart}
+            accessibilityState={{ disabled: actionDisabled, busy: joining }}
+            disabled={actionDisabled}
+            onPress={canSubmitProof ? onOpenProof : onStart}
             style={({ pressed }) => [
               styles.primaryButton,
-              started
-                ? { backgroundColor: colors.surfaceRaised }
-                : { backgroundColor: colors.green },
+              canSubmitProof || !participation
+                ? { backgroundColor: colors.green }
+                : { backgroundColor: colors.surfaceRaised },
               pressed && styles.pressed,
             ]}
           >
             <Text
               style={[
                 styles.primaryText,
-                { color: started ? colors.muted : "#17310b" },
+                {
+                  color:
+                    canSubmitProof || !participation
+                      ? "#17310b"
+                      : colors.muted,
+                },
               ]}
             >
-              {started ? "진행 취소" : "미션 시작하기"}
+              {actionLabel}
             </Text>
           </Pressable>
         </View>
@@ -278,9 +360,22 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   startedText: {
-    color: "#17310b",
     flex: 1,
     fontFamily: "WantedSansB",
+    fontSize: 10,
+    lineHeight: 15,
+  },
+  actionError: {
+    alignItems: "flex-start",
+    borderRadius: 12,
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 9,
+    padding: 9,
+  },
+  actionErrorText: {
+    flex: 1,
+    fontFamily: "WantedSansR",
     fontSize: 10,
     lineHeight: 15,
   },

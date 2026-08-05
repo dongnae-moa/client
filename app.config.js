@@ -61,7 +61,8 @@ export default {
         {
           photosPermission:
             "동네 인증과 게시글에 사진을 첨부하기 위해 사진 보관함을 사용합니다.",
-          cameraPermission: false,
+          cameraPermission:
+            "미션 완료 인증 사진을 촬영하기 위해 카메라를 사용합니다.",
           microphonePermission: false,
         },
       ],
