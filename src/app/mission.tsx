@@ -14,14 +14,14 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ApiError } from "../api/client";
+import { getQuests } from "../api/quests";
 import { useAuth } from "../auth/AuthContext";
 import { useNavBarHeight } from "../components/FloatingNavBar";
 import MissionComposer from "../components/MissionComposer";
 import MissionDetailSheet from "../components/MissionDetailSheet";
 import MissionFilterPanel from "../components/MissionFilterPanel";
 import MissionMap from "../components/MissionMap";
-import { ApiError } from "../api/client";
-import { getQuests } from "../api/quests";
 import {
   countActiveFilters,
   DEFAULT_FILTERS,
@@ -54,10 +54,12 @@ export default function MissionScreen() {
   // 이 탭을 처음 열 때까지 위치 권한 요청과 네이티브 지도 생성을 미룬다.
   const [activated, setActivated] = useState(false);
   const [savedIds, setSavedIds] = useState<string[]>([]);
-  useFocusEffect(useCallback(() => {
-    setActivated(true);
-    void getSavedMissionIds().then(setSavedIds);
-  }, []));
+  useFocusEffect(
+    useCallback(() => {
+      setActivated(true);
+      void getSavedMissionIds().then(setSavedIds);
+    }, []),
+  );
   const { coords, origin, hasPermission, settled } =
     useCurrentLocation(activated);
 
@@ -226,6 +228,7 @@ export default function MissionScreen() {
         >
           {missions.length > 0 ? (
             missions.map((mission) => {
+              if (mission.authorNickname === user?.nickname) return;
               const selected = selectedId === mission.id;
               const status = statusMeta[mission.status];
               const titleSize =
@@ -286,9 +289,43 @@ export default function MissionScreen() {
                           </Text>
                         </View>
                         <View style={styles.missionPointActions}>
-                          <Text style={[styles.missionPoints, { color: colors.orange }]}>★ {mission.rewardPoint}P</Text>
-                          <Pressable accessibilityLabel={`${mission.title} ${savedIds.includes(mission.id) ? "저장 해제" : "저장"}`} onPress={(event) => { event.stopPropagation(); void toggleSaved(mission.id); }} hitSlop={8} style={[styles.saveButton, { backgroundColor: savedIds.includes(mission.id) ? colors.greenSoft : colors.surfaceRaised }]}>
-                            <Ionicons name={savedIds.includes(mission.id) ? "bookmark" : "bookmark-outline"} size={14} color={savedIds.includes(mission.id) ? colors.greenInk : colors.muted} />
+                          <Text
+                            style={[
+                              styles.missionPoints,
+                              { color: colors.orange },
+                            ]}
+                          >
+                            ★ {mission.rewardPoint}P
+                          </Text>
+                          <Pressable
+                            accessibilityLabel={`${mission.title} ${savedIds.includes(mission.id) ? "저장 해제" : "저장"}`}
+                            onPress={(event) => {
+                              event.stopPropagation();
+                              void toggleSaved(mission.id);
+                            }}
+                            hitSlop={8}
+                            style={[
+                              styles.saveButton,
+                              {
+                                backgroundColor: savedIds.includes(mission.id)
+                                  ? colors.greenSoft
+                                  : colors.surfaceRaised,
+                              },
+                            ]}
+                          >
+                            <Ionicons
+                              name={
+                                savedIds.includes(mission.id)
+                                  ? "bookmark"
+                                  : "bookmark-outline"
+                              }
+                              size={14}
+                              color={
+                                savedIds.includes(mission.id)
+                                  ? colors.greenInk
+                                  : colors.muted
+                              }
+                            />
                           </Pressable>
                         </View>
                       </View>
@@ -582,7 +619,11 @@ export default function MissionScreen() {
             pressed && styles.pressed,
           ]}
         >
-          <Ionicons name="alert-circle-outline" size={17} color={colors.orange} />
+          <Ionicons
+            name="alert-circle-outline"
+            size={17}
+            color={colors.orange}
+          />
           <Text style={[styles.createdToastText, { color: colors.text }]}>
             {loadError}
           </Text>
@@ -831,7 +872,13 @@ const styles = StyleSheet.create({
   missionCategory: { fontFamily: "WantedSansB", fontSize: 10 },
   missionPoints: { fontFamily: "WantedSansB", fontSize: 11 },
   missionPointActions: { alignItems: "center", flexDirection: "row", gap: 6 },
-  saveButton: { alignItems: "center", borderRadius: 999, height: 27, justifyContent: "center", width: 27 },
+  saveButton: {
+    alignItems: "center",
+    borderRadius: 999,
+    height: 27,
+    justifyContent: "center",
+    width: 27,
+  },
   missionTitle: {
     fontFamily: "WantedSansB",
     letterSpacing: -0.4,

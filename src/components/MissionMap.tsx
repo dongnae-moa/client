@@ -7,6 +7,7 @@ import MapView, {
   PROVIDER_GOOGLE,
   type MapPressEvent,
 } from "react-native-maps";
+import { useAuth } from "../auth/AuthContext";
 import { statusMeta, type Mission } from "../data/missions";
 import { useTheme, type AppTheme, type ThemeMode } from "../theme/ThemeContext";
 import type { Coords } from "../utils/geo";
@@ -59,7 +60,6 @@ type MissionMapProps = {
   /** 하단 네비바(+열려 있는 상세 시트)가 지도를 덮는 높이. */
   bottomPadding: number;
 };
-
 export default function MissionMap({
   missions,
   origin,
@@ -74,6 +74,7 @@ export default function MissionMap({
   bottomPadding,
 }: MissionMapProps) {
   const { colors, mode } = useTheme();
+  const { user, updateUser, refreshProfile } = useAuth();
   const mapRef = useRef<MapView>(null);
   const centeredOnUser = useRef(false);
   const animatedFor = useRef<string | null>(null);
@@ -157,6 +158,7 @@ export default function MissionMap({
       onPressMap={handleMapPress}
     >
       {pins.map((pin) => {
+        if (pin.mission.authorNickname === user?.nickname) return;
         const selected = pin.mission.id === selectedId;
         return (
           <MissionMarker

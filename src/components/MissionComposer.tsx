@@ -95,8 +95,10 @@ export default function MissionComposer({
         {
           title: createdTitle,
           description: description.trim(),
-          latitude: coords.latitude,
-          longitude: coords.longitude,
+          // latitude: coords.latitude,
+          // longitude: coords.longitude,
+          latitude: 37.496769,
+          longitude: 127.040029,
         },
         photoUri,
       );
