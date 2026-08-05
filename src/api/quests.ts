@@ -26,7 +26,7 @@ export type QuestListItem = {
   id: number;
   title: string;
   description: string;
-  imageUrl: string;
+  imageUrl?: string | null;
   rewardPoint: number;
   status: string;
   minutes: number;
@@ -37,6 +37,18 @@ export type QuestListItem = {
   latitude: number;
   longitude: number;
   distanceMeters: number;
+};
+
+/**
+ * 발표용 DB 씨앗은 바이너리 파일을 별도로 업로드하지 않는다. Notion 테스트 데이터와
+ * 함께 받은 앱 번들 이미지를 제목으로 연결해 오프라인·Expo Go에서도 같은 사진을 쓴다.
+ */
+const DEMO_MISSION_IMAGES: Record<string, number> = {
+  "인도를 막고 있는 공유자전거를 지정 구역으로 이동": require("@/assets/images/missions/gcoo.png"),
+  "점자블록 위 이동 가능한 방해물 정리": require("@/assets/images/missions/tactile-block.png"),
+  "공원 운동기구 파손 여부 확인": require("@/assets/images/missions/exercise-equipment.png"),
+  "지도에 표시된 공중화장실 운영 여부 확인": require("@/assets/images/missions/public-restroom.png"),
+  "도로 파손·맨홀 이상 제보": require("@/assets/images/missions/road-damage.png"),
 };
 
 const MISSION_STATUSES: MissionStatus[] = [
@@ -63,7 +75,10 @@ export function toMission(item: QuestListItem): Mission {
     // 앱은 선택 상태·저장 목록을 문자열 id로 다룬다.
     id: String(item.id),
     title: item.title,
-    imageUrl: item.imageUrl,
+    imageUrl:
+      item.imageUrl?.trim() ||
+      DEMO_MISSION_IMAGES[item.title] ||
+      require("@/assets/images/missions/park-sign.png"),
     distanceMeters: item.distanceMeters,
     status,
     minutes: item.minutes,

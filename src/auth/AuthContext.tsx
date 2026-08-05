@@ -4,7 +4,12 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Platform } from "react-native";
 import { ApiError, apiRequest, configureApiAuth, publicApiRequest } from "../api/client";
 import { setDemoRewardOwner } from "../api/demoRewards";
-import type { AuthSession, CurrentUser, Neighborhood } from "../api/types";
+import type {
+  AuthSession,
+  CurrentUser,
+  Neighborhood,
+  UserProfileResponse,
+} from "../api/types";
 
 const ONBOARDING_KEY = "dongnaemoa.onboarding.v2";
 const REFRESH_TOKEN_KEY = "dongnaemoa.refresh-token.v1";
@@ -98,6 +103,33 @@ function mergeUserWithLocalSnapshot(nextUser: CurrentUser, previousUser: Current
   };
 }
 
+/** 서버의 UserProfileResponse를 앱이 사용하는 평면 사용자 상태로 정규화한다. */
+function profileResponseToCurrentUser(
+  profile: UserProfileResponse,
+  previousUser: CurrentUser | null,
+): CurrentUser {
+  const previousForSameUser =
+    previousUser?.userId === profile.id ? previousUser : null;
+
+  return {
+    userId: profile.id,
+    email: profile.email,
+    nickname: profile.nickname,
+    point: profile.point,
+    // 서버 동네 요약에 id가 없으면 가입 직후 저장한 로컬 스냅샷의 id를 유지한다.
+    neighborhoodId:
+      profile.neighborhood?.id ?? previousForSameUser?.neighborhoodId ?? null,
+    neighborhoodName:
+      profile.neighborhood?.name ??
+      previousForSameUser?.neighborhoodName ??
+      null,
+    profileDecorationKey:
+      profile.profileDecorationKey ??
+      previousForSameUser?.profileDecorationKey ??
+      null,
+  };
+}
+
 export function AuthProvider({ children }: PropsWithChildren) {
   const [phase, setPhase] = useState<AppPhase>("booting");
   const [user, setUser] = useState<CurrentUser | null>(null);
@@ -163,7 +195,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const refreshProfile = useCallback(async () => {
     try {
-      const current = await apiRequest<CurrentUser>("/v1/users/me", {}, { handleUnauthorized: false });
+      const response = await apiRequest<UserProfileResponse>(
+        "/v1/users/me",
+        {},
+        { handleUnauthorized: false },
+      );
+      const current = profileResponseToCurrentUser(response, userRef.current);
       const merged = mergeUserWithLocalSnapshot(current, userRef.current);
       await storeUser(merged);
       setPhase(merged.neighborhoodId ? "authenticated" : "needsNeighborhood");

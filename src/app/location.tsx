@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { ApiError } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { getForegroundLocationPermission } from "../services/locationPermission";
 import { useTheme } from "../theme/ThemeContext";
 
 export default function LocationSetupScreen() {
@@ -23,10 +24,7 @@ export default function LocationSetupScreen() {
     setLoading(true);
     setError(null);
     try {
-      const existingPermission = await Location.getForegroundPermissionsAsync();
-      const permission = existingPermission.status === "granted" || !existingPermission.canAskAgain
-        ? existingPermission
-        : await Location.requestForegroundPermissionsAsync();
+      const permission = await getForegroundLocationPermission(true);
       if (permission.status !== "granted") {
         setDenied(true);
         return;
