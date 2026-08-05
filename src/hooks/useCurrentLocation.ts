@@ -1,5 +1,6 @@
 import * as Location from "expo-location";
 import { useEffect, useState } from "react";
+import { getForegroundLocationPermission } from "../services/locationPermission";
 import type { Coords } from "../utils/geo";
 
 /** 위치 권한이 없거나 조회에 실패했을 때 기준으로 삼을 좌표(서울시청). */
@@ -28,10 +29,7 @@ export function useCurrentLocation(enabled: boolean) {
 
     (async () => {
       try {
-        const existingPermission = await Location.getForegroundPermissionsAsync();
-        const permission = existingPermission.status === "undetermined"
-          ? await Location.requestForegroundPermissionsAsync()
-          : existingPermission;
+        const permission = await getForegroundLocationPermission(true);
         const { granted } = permission;
         if (!isMounted) return;
         setHasPermission(granted);

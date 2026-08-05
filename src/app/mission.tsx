@@ -6,6 +6,7 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -77,6 +78,7 @@ export default function MissionScreen() {
   const [filters, setFilters] = useState<MissionFilters>(DEFAULT_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
+  const [viewToggleProgress] = useState(() => new Animated.Value(0));
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [participations, setParticipations] =
     useState<ParticipationByQuest>({});
@@ -256,16 +258,28 @@ export default function MissionScreen() {
     [rememberParticipation],
   );
 
+  useEffect(() => {
+    Animated.spring(viewToggleProgress, {
+      toValue: viewMode === "map" ? 0 : 1,
+      stiffness: 260,
+      damping: 25,
+      mass: 0.72,
+      useNativeDriver: true,
+    }).start();
+  }, [viewMode, viewToggleProgress]);
+
   // 목록에서 지도로 돌아올 때는 선택해둔 핀을 다시 화면 중앙으로 맞춘다. 목록에 가려진
   // 동안에도 지도는 계속 살아 있어서, 카메라를 옮겨두지 않으면 엉뚱한 곳이 보인다.
-  const toggleViewMode = useCallback(() => {
-    if (viewMode === "map") {
-      setViewMode("list");
-      return;
-    }
-    setViewMode("map");
-    setFocusRequest((current) => current + 1);
-  }, [viewMode]);
+  const selectViewMode = useCallback(
+    (nextMode: "map" | "list") => {
+      if (nextMode === viewMode) return;
+      setViewMode(nextMode);
+      if (nextMode === "map") {
+        setFocusRequest((current) => current + 1);
+      }
+    },
+    [viewMode],
+  );
 
   const sheetReserved = selectedMission ? sheetHeight + 8 : 0;
   // 지도 컨트롤과 카메라 중심이 상단바·네비바·상세 시트를 피하도록 패딩으로 알려준다.
@@ -592,24 +606,57 @@ export default function MissionScreen() {
             </Text>
           </View>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              viewMode === "map" ? "목록으로 보기" : "지도로 보기"
-            }
-            onPress={toggleViewMode}
-            style={({ pressed }) => [
-              styles.iconButton,
+          <View
+            style={[
+              styles.viewToggle,
               { backgroundColor: colors.surface, borderColor: colors.border },
-              pressed && styles.pressed,
             ]}
           >
-            <Ionicons
-              name={viewMode === "map" ? "list-outline" : "map-outline"}
-              size={18}
-              color={colors.text}
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.viewToggleThumb,
+                {
+                  backgroundColor: colors.green,
+                  transform: [
+                    {
+                      translateX: viewToggleProgress.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, 32],
+                      }),
+                    },
+                  ],
+                },
+              ]}
             />
-          </Pressable>
+            {(["map", "list"] as const).map((modeOption) => {
+              const selected = viewMode === modeOption;
+              return (
+                <Pressable
+                  key={modeOption}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    modeOption === "map" ? "지도 보기" : "리스트 보기"
+                  }
+                  accessibilityState={{ selected }}
+                  onPress={() => selectViewMode(modeOption)}
+                  hitSlop={4}
+                  style={({ pressed }) => [
+                    styles.viewToggleOption,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Ionicons
+                    name={
+                      modeOption === "map" ? "map-outline" : "list-outline"
+                    }
+                    size={17}
+                    color={selected ? "#17310b" : colors.muted}
+                  />
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
         <ScrollView
@@ -890,13 +937,32 @@ const styles = StyleSheet.create({
   barCopy: { flex: 1, minWidth: 0 },
   barTitle: { fontFamily: "WantedSansB", fontSize: 13 },
   barSummary: { fontFamily: "WantedSansR", fontSize: 9, marginTop: 2 },
-  iconButton: {
+  viewToggle: {
     alignItems: "center",
     borderRadius: 999,
     borderWidth: 1,
+    flexDirection: "row",
     height: 36,
     justifyContent: "center",
-    width: 36,
+    overflow: "hidden",
+    padding: 2,
+    position: "relative",
+    width: 68,
+  },
+  viewToggleThumb: {
+    borderRadius: 999,
+    bottom: 2,
+    left: 2,
+    position: "absolute",
+    top: 2,
+    width: 32,
+  },
+  viewToggleOption: {
+    alignItems: "center",
+    height: 32,
+    justifyContent: "center",
+    width: 32,
+    zIndex: 1,
   },
   categoryRow: { gap: 7, paddingRight: 4, paddingTop: 9 },
   categoryChip: {

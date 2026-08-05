@@ -27,6 +27,21 @@ export type CurrentUser = {
   profileDecorationKey: string | null;
 };
 
+/** GET /v1/users/me가 실제로 반환하는 중첩 동네 구조. */
+export type UserProfileResponse = {
+  id: number;
+  email: string;
+  nickname: string;
+  point: number;
+  neighborhood: {
+    id?: number | null;
+    name: string;
+    sido: string;
+    sigungu: string;
+  } | null;
+  profileDecorationKey?: string | null;
+};
+
 export type Neighborhood = {
   id: number;
   administrativeCode: string;
