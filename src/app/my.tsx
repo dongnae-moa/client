@@ -528,6 +528,38 @@ export default function MyScreen() {
           <Ionicons name="chevron-forward" size={18} color={colors.muted} />
         </SurfaceCard>
       </Pressable>
+
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          내가 만든 미션
+        </Text>
+        <Pressable onPress={() => router.push("/my-missions" as Href)}>
+          <Text style={[styles.more, { color: colors.green }]}>
+            인증 심사하기 ›
+          </Text>
+        </Pressable>
+      </View>
+      <Pressable
+        onPress={() => router.push("/my-missions" as Href)}
+        style={({ pressed }) => pressed && styles.profilePressed}
+      >
+        <SurfaceCard style={styles.savedMissionCard}>
+          <View
+            style={[styles.savedIcon, { backgroundColor: colors.greenSoft }]}
+          >
+            <Ionicons name="clipboard" size={20} color={colors.greenInk} />
+          </View>
+          <View style={styles.savedCopy}>
+            <Text style={[styles.savedTitle, { color: colors.text }]}>
+              들어온 인증 확인하기
+            </Text>
+            <Text style={[styles.savedMeta, { color: colors.muted }]}>
+              내가 올린 미션의 인증을 승인하거나 반려해요.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.muted} />
+        </SurfaceCard>
+      </Pressable>
     </ScreenSurface>
   );
 }

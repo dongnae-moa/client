@@ -98,6 +98,7 @@ function AppRoot() {
           <Tabs.Screen name="settings" options={{ href: null }} />
           <Tabs.Screen name="profile" options={{ href: null }} />
           <Tabs.Screen name="saved-missions" options={{ href: null }} />
+          <Tabs.Screen name="my-missions" options={{ href: null }} />
           <Tabs.Screen name="onboarding" options={{ href: null }} />
           <Tabs.Screen name="location" options={{ href: null }} />
           <Tabs.Screen name="auth" options={{ href: null }} />

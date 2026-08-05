@@ -21,6 +21,43 @@ export type SubmitProofRequest = {
   proofDescription?: string;
 };
 
+/**
+ * 퀘스트에 들어온 참여·제출 목록. 등록자가 심사할 때 쓴다.
+ *
+ * 참여 시작이 `POST /v1/quests/{questId}/participations`라 같은 컬렉션의 GET으로 뒀다.
+ * 명세를 따로 받지 못해 추정한 경로이므로, 서버가 다르면 이 함수의 경로만 고치면 된다.
+ */
+export function getQuestParticipations(questId: number) {
+  return apiRequest<Participation[]>(
+    `/v1/quests/${questId}/participations`,
+    {},
+    { handleUnauthorized: false },
+  );
+}
+
+/**
+ * 제출된 인증을 승인한다. 서버가 참여자에게 rewardPoint를 즉시 지급하고
+ * 퀘스트 상태를 COMPLETED로 바꾼다. 등록자 본인이 아니면 403이 온다.
+ *
+ * 응답 본문에는 쓸 만한 data가 없어서 결과를 읽지 않는다.
+ */
+export function approveParticipation(participationId: number) {
+  return apiRequest<void>(`/v1/participations/${participationId}/approve`, {
+    method: "POST",
+  });
+}
+
+/** 제출된 인증을 사유와 함께 반려한다. 포인트는 지급되지 않는다. */
+export function rejectParticipation(
+  participationId: number,
+  rejectionReason: string,
+) {
+  return apiRequest<void>(`/v1/participations/${participationId}/reject`, {
+    method: "POST",
+    body: JSON.stringify({ rejectionReason }),
+  });
+}
+
 /** 로그인 사용자가 퀘스트 참여를 시작하고 제출에 필요한 participationId를 받는다. */
 export function joinQuest(questId: number) {
   return apiRequest<Participation>(`/v1/quests/${questId}/participations`, {
