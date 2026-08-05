@@ -7,7 +7,6 @@ import { getQuests } from "../api/quests";
 import {
   applyProfileDecoration,
   getMyRewards,
-  getPointBalance,
 } from "../api/rewards";
 import type { RewardRedemption } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
@@ -48,13 +47,9 @@ export default function MyScreen() {
 
   const loadBenefits = useCallback(async () => {
     try {
-      const [items, profile, point] = await Promise.all([
-        getMyRewards(),
-        refreshProfile(),
-        getPointBalance(),
-      ]);
+      // 포인트는 refreshProfile이 /v1/users/me에서 받아 이미 반영한다.
+      const [items] = await Promise.all([getMyRewards(), refreshProfile()]);
       setBenefits(items);
-      updateUser({ ...profile, point: point.balance });
       setBenefitError(null);
     } catch (requestError) {
       setBenefitError(

@@ -22,7 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ApiError } from "../api/client";
-import { getPointBalance, getRewards, redeemReward } from "../api/rewards";
+import { getRewards, redeemReward } from "../api/rewards";
 import type { RewardItem, RewardRedemption, RewardType } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import AppHeader from "../components/AppHeader";
@@ -56,10 +56,11 @@ function rewardImage(reward: RewardItem) {
 export default function StoreScreen() {
   const router = useRouter();
   const { colors, mode } = useTheme();
-  const { refreshProfile, updateUser } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [category, setCategory] = useState<Category>(categories[0]);
   const [rewards, setRewards] = useState<RewardItem[]>([]);
-  const [balance, setBalance] = useState(0);
+  // 보유 포인트는 /v1/users/me가 유일한 출처다. 화면에서 따로 계산하거나 깎지 않는다.
+  const balance = user?.point ?? 0;
   const [selected, setSelected] = useState<RewardItem | null>(null);
   const [receipt, setReceipt] = useState<RewardRedemption | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,12 +71,9 @@ export default function StoreScreen() {
     setLoading(true);
     setError(null);
     try {
-      const [catalog, point] = await Promise.all([
-        getRewards(),
-        getPointBalance(),
-      ]);
+      // 포인트는 refreshProfile이 채우므로 여기서는 목록만 받는다.
+      const [catalog] = await Promise.all([getRewards(), refreshProfile()]);
       setRewards(catalog);
-      setBalance(point.balance);
     } catch (requestError) {
       setError(
         requestError instanceof ApiError
@@ -85,7 +83,7 @@ export default function StoreScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshProfile]);
 
   useFocusEffect(
     useCallback(() => {
@@ -110,12 +108,8 @@ export default function StoreScreen() {
       const result = await redeemReward(selected.id, idempotencyKey);
       setReceipt(result);
       setSelected(null);
-      const [, profile, point] = await Promise.all([
-        load(),
-        refreshProfile(),
-        getPointBalance(),
-      ]);
-      updateUser({ ...profile, point: point.balance });
+      // 교환 뒤 잔액은 서버가 정한다. 화면에서 빼지 않고 프로필을 다시 받는다.
+      await load();
     } catch (requestError) {
       setError(
         requestError instanceof ApiError
@@ -567,9 +561,10 @@ function RewardDetail({
               </Text>
             </View>
             <Ionicons name="arrow-forward" size={18} color={colors.muted} />
+            {/* 교환 후 잔액을 앱에서 계산해 보여주지 않는다. 포인트는 서버가 정한다. */}
             <View style={styles.summaryRight}>
               <Text style={[styles.summaryLabel, { color: colors.muted }]}>
-                교환 후
+                필요 포인트
               </Text>
               <Text
                 style={[
@@ -577,7 +572,7 @@ function RewardDetail({
                   { color: insufficient ? colors.orange : colors.green },
                 ]}
               >
-                {Math.max(0, balance - reward.pointPrice).toLocaleString()} P
+                {reward.pointPrice.toLocaleString()} P
               </Text>
             </View>
           </View>

@@ -1,6 +1,6 @@
 import { apiRequest } from "./client";
 import type { CurrentUser, RewardItem, RewardRedemption, RewardType } from "./types";
-import { demoApplyProfileDecoration, demoGetMyRewards, demoGetPointBalance, demoGetRewards, demoRedeemReward, shouldUseDemoRewards } from "./demoRewards";
+import { demoApplyProfileDecoration, demoGetMyRewards, demoGetRewards, demoRedeemReward, shouldUseDemoRewards } from "./demoRewards";
 
 export async function getRewards(type?: RewardType) {
   const query = type ? `?category=${type}` : "";
@@ -13,14 +13,7 @@ export async function getRewards(type?: RewardType) {
   }
 }
 
-export async function getPointBalance() {
-  try {
-    return await apiRequest<{ balance: number }>("/v1/users/me/points", {}, { handleUnauthorized: false });
-  } catch (error) {
-    if (!shouldUseDemoRewards(error)) throw error;
-    return demoGetPointBalance();
-  }
-}
+// 포인트 잔액은 별도 엔드포인트를 쓰지 않는다. /v1/users/me의 point가 유일한 출처다.
 
 export async function redeemReward(rewardId: number, idempotencyKey: string) {
   try {

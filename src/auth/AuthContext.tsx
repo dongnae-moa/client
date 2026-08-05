@@ -77,10 +77,65 @@ function sessionToUser(session: AuthSession, email = ""): CurrentUser {
     userId: session.userId,
     email,
     nickname: session.nickname,
-    point: session.point ?? 1250,
+    // 포인트는 /v1/users/me가 알려준다. 로그인 직후 아직 모를 때만 0으로 두고,
+    // refreshProfile이 실제 값으로 채운다.
+    point: session.point ?? 0,
     neighborhoodId: session.neighborhoodId ?? null,
     neighborhoodName: session.neighborhoodName ?? null,
     profileDecorationKey: session.profileDecorationKey ?? null,
+  };
+}
+
+/**
+ * `/v1/users/me` 응답. 앱 내부의 `CurrentUser`와 필드 이름이 다르다.
+ *
+ * 서버는 `id`와 중첩된 `neighborhood`를 주고 동네 id는 주지 않는다. 예전 형태도 함께
+ * 받아두는 이유는 저장된 스냅샷이나 다른 응답이 그 모양일 수 있어서다.
+ */
+type ServerUser = {
+  id?: number;
+  userId?: number;
+  email?: string;
+  nickname?: string;
+  point?: number;
+  neighborhood?: {
+    id?: number;
+    name?: string;
+    sido?: string;
+    sigungu?: string;
+  } | null;
+  neighborhoodId?: number | null;
+  neighborhoodName?: string | null;
+  profileDecorationKey?: string | null;
+};
+
+/**
+ * 프로필 응답을 `CurrentUser`로 맞춘다.
+ *
+ * 응답에 없는 값은 이전 사용자 정보를 지킨다. 특히 동네 id가 중요한데, 응답에 그 값이 없다고
+ * 비워버리면 phase가 needsNeighborhood로 떨어져 동네 설정 화면으로 튕기고 퀘스트 조회도 막힌다.
+ */
+function normalizeServerUser(
+  payload: ServerUser,
+  previousUser: CurrentUser | null,
+): CurrentUser {
+  return {
+    userId: payload.id ?? payload.userId ?? previousUser?.userId ?? 0,
+    email: payload.email || previousUser?.email || "",
+    nickname: payload.nickname || previousUser?.nickname || "",
+    point: payload.point ?? previousUser?.point ?? 0,
+    neighborhoodId:
+      payload.neighborhood?.id ??
+      payload.neighborhoodId ??
+      previousUser?.neighborhoodId ??
+      null,
+    neighborhoodName:
+      payload.neighborhood?.name ??
+      payload.neighborhoodName ??
+      previousUser?.neighborhoodName ??
+      null,
+    profileDecorationKey:
+      payload.profileDecorationKey ?? previousUser?.profileDecorationKey ?? null,
   };
 }
 
@@ -163,8 +218,8 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const refreshProfile = useCallback(async () => {
     try {
-      const current = await apiRequest<CurrentUser>("/v1/users/me", {}, { handleUnauthorized: false });
-      const merged = mergeUserWithLocalSnapshot(current, userRef.current);
+      const payload = await apiRequest<ServerUser>("/v1/users/me", {}, { handleUnauthorized: false });
+      const merged = normalizeServerUser(payload, userRef.current);
       await storeUser(merged);
       setPhase(merged.neighborhoodId ? "authenticated" : "needsNeighborhood");
       return merged;

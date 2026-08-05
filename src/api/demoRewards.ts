@@ -10,8 +10,8 @@ const CATALOG: RewardItem[] = [
   { id: 1, code: "CONVENIENCE_3000", type: "GIFTICON", title: "CU 3천원 모바일 상품권", description: "미션으로 모은 포인트를 생활 속 작은 혜택으로 바꿔요.", terms: "발표용 데모 코드이며 실제 매장에서는 사용할 수 없어요.", sponsorName: "CU 그린웨이브 CSR", pointPrice: 900, remainingStock: 8, monthlyLimit: 40, status: "AVAILABLE", demoOnly: true, decorationKey: null },
 ];
 
+// 포인트는 서버(/v1/users/me)만 알고 있다. 여기서 잔액을 들고 다니며 더하거나 빼지 않는다.
 type DemoRewardState = {
-  balance: number;
   decorationKey: string | null;
   idempotency: Record<string, number>;
   nextId: number;
@@ -31,7 +31,6 @@ function storageKey() {
 
 function initialState(): DemoRewardState {
   return {
-    balance: 1250,
     decorationKey: null,
     idempotency: {},
     nextId: 1,
@@ -63,10 +62,6 @@ export async function demoGetRewards() {
   return CATALOG.map((item) => ({ ...item, remainingStock: item.remainingStock == null ? null : state.stock[String(item.id)] ?? item.remainingStock }));
 }
 
-export async function demoGetPointBalance() {
-  return { balance: (await readState()).balance };
-}
-
 export async function demoRedeemReward(rewardId: number, idempotencyKey: string) {
   const state = await readState();
   const previousId = state.idempotency[idempotencyKey];
@@ -75,7 +70,6 @@ export async function demoRedeemReward(rewardId: number, idempotencyKey: string)
   if (!reward) throw new ApiError("혜택을 찾지 못했어요.", 404);
   const stock = reward.remainingStock == null ? null : state.stock[String(reward.id)] ?? reward.remainingStock;
   if (stock === 0) throw new ApiError("이미 품절된 혜택이에요.", 409);
-  if (state.balance < reward.pointPrice) throw new ApiError("포인트가 부족해요.", 400);
 
   const redemption: RewardRedemption = {
     id: state.nextId,
@@ -89,7 +83,6 @@ export async function demoRedeemReward(rewardId: number, idempotencyKey: string)
     demoOnly: true,
     decorationKey: reward.decorationKey,
   };
-  state.balance -= reward.pointPrice;
   state.nextId += 1;
   state.redemptions.unshift(redemption);
   state.idempotency[idempotencyKey] = redemption.id;
@@ -108,5 +101,6 @@ export async function demoApplyProfileDecoration(redemptionId: number, currentUs
   if (!redemption?.decorationKey) throw new ApiError("적용할 프로필 장식을 찾지 못했어요.", 404);
   state.decorationKey = redemption.decorationKey;
   await writeState(state);
-  return { ...currentUser, point: state.balance, profileDecorationKey: redemption.decorationKey };
+  // 포인트는 건드리지 않고 장식만 바꾼다.
+  return { ...currentUser, profileDecorationKey: redemption.decorationKey };
 }
