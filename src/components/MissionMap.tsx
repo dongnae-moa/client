@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import Constants from "expo-constants";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import MapView, {
@@ -9,20 +9,23 @@ import MapView, {
 } from "react-native-maps";
 import { useAuth } from "../auth/AuthContext";
 import { statusMeta, type Mission } from "../data/missions";
+import { darkMapStyle } from "../theme/darkMapStyle";
+import ExpoGoMissionMap from "./ExpoGoMissionMap";
+import { lightMapStyle } from "../theme/lightMapStyle";
 import { useTheme, type AppTheme, type ThemeMode } from "../theme/ThemeContext";
 import type { Coords } from "../utils/geo";
 
-// 지도 스타일은 Google Cloud 콘솔의 Map ID로 관리한다(코드 내 customMapStyle과 함께 쓸 수 없다).
-// Map ID는 지도 생성 시점에만 적용되므로(MapManager.createViewInstance), 테마가 바뀌면
-// MapView를 key로 다시 마운트해야 새 스타일이 반영된다.
-const MAP_ID_DARK =
-  (Constants.expoConfig?.extra?.googleMapIdDark as string | undefined) ??
-  "449973237f53c8cbcd81d11f";
-// 라이트용 Map ID가 없으면 대신 lightMapStyle(JSON)로 라이트를 강제한다.
-// 폐기
-const MAP_ID_LIGHT =
-  (Constants.expoConfig?.extra?.googleMapIdDark as string | undefined) ??
-  "449973237f53c8cbcd81d11f";
+// Cloud Map ID는 프로젝트 네이티브 API 키로 만든 빌드에서만 사용한다. Expo Go는
+// Expo의 공용 네이티브 키를 사용하므로 프로젝트 Map ID를 강제로 넘기면 지도 타일이
+// 검게 비는 기기가 있다. 이때는 로컬 JSON 스타일을 적용해 정상 지도를 표시한다.
+const MAP_ID_DARK = Constants.expoConfig?.extra?.googleMapIdDark as
+  | string
+  | undefined;
+const MAP_ID_LIGHT = Constants.expoConfig?.extra?.googleMapIdLight as
+  | string
+  | undefined;
+const IS_EXPO_GO =
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
 /** 선택된 핀으로 카메라를 옮길 때 쓰는 확대 수준. */
 const FOCUS_ZOOM = 17;
@@ -116,6 +119,7 @@ export default function MissionMap({
 
   // 정확한 위치가 처음 도착했을 때 한 번만 내 위치로 이동한다.
   useEffect(() => {
+    if (IS_EXPO_GO) return;
     if (!userLocation || centeredOnUser.current) return;
     centeredOnUser.current = true;
     mapRef.current?.animateCamera(
@@ -131,6 +135,7 @@ export default function MissionMap({
   // "어떤 선택에 대해 이미 움직였는지"를 토큰으로 기억한다.
   const focusToken = selectedId ? `${selectedId}#${focusRequest}` : null;
   useEffect(() => {
+    if (IS_EXPO_GO) return;
     if (!focusToken || !selectedId) {
       animatedFor.current = null;
       return;
@@ -144,6 +149,24 @@ export default function MissionMap({
       { duration: 420 },
     );
   }, [focusToken, pins, selectedId]);
+
+  if (IS_EXPO_GO) {
+    return (
+      <ExpoGoMissionMap
+        pins={pins}
+        center={userLocation ?? origin}
+        userLocation={userLocation}
+        selectedId={selectedId}
+        focusRequest={focusRequest}
+        mode={mode}
+        colors={colors}
+        topPadding={topPadding}
+        bottomPadding={bottomPadding}
+        onSelectMission={handleMarkerPress}
+        onPressMap={onPressMap}
+      />
+    );
+  }
 
   return (
     <ThemedMap
@@ -210,7 +233,13 @@ function ThemedMap({
   children,
 }: ThemedMapProps) {
   const [loaded, setLoaded] = useState(false);
-  const mapId = mode === "dark" ? MAP_ID_DARK : MAP_ID_LIGHT;
+  const configuredMapId = mode === "dark" ? MAP_ID_DARK : MAP_ID_LIGHT;
+  const mapId = IS_EXPO_GO ? undefined : configuredMapId;
+  const customMapStyle = mapId
+    ? undefined
+    : mode === "dark"
+      ? darkMapStyle
+      : lightMapStyle;
   return (
     <MapView
       ref={mapRef}
@@ -238,9 +267,7 @@ function ThemedMap({
       showsMyLocationButton={hasPermission}
       followsUserLocation={false}
       googleMapId={mapId}
-      // Map ID가 있으면 Cloud 스타일이 우선이라 customMapStyle은 무시된다.
-      // 라이트용 Map ID가 없을 때만 JSON 스타일로 라이트를 강제한다. (폐기)
-      // customMapStyle={mode === "light" && !mapId ? lightMapStyle : undefined}
+      customMapStyle={customMapStyle}
       userInterfaceStyle={mode}
       toolbarEnabled={false}
     >
