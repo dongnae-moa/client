@@ -20,12 +20,16 @@ export default function SavedMissionsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { user } = useAuth();
-  const { origin } = useCurrentLocation(true);
+  // _layout.tsx가 lazy:false라 이 화면도 앱을 켜는 순간 마운트된다. 위치를 바로 켜면
+  // 열어보지도 않은 화면이 GPS를 잡으므로, 실제로 화면이 열린 뒤에만 요청한다.
+  const [activated, setActivated] = useState(false);
+  const { origin } = useCurrentLocation(activated);
   const [savedIds, setSavedIds] = useState<string[]>([]);
   // 저장 목록은 id만 갖고 있어서, 카드에 보여줄 내용은 동네 퀘스트 목록에서 찾아온다.
   const [neighborhoodMissions, setNeighborhoodMissions] = useState<Mission[]>([]);
   const neighborhoodId = user?.neighborhoodId ?? null;
   useFocusEffect(useCallback(() => {
+    setActivated(true);
     void getSavedMissionIds().then(setSavedIds);
     if (neighborhoodId == null) return;
     void getQuests({ neighborhoodId, latitude: origin.latitude, longitude: origin.longitude })

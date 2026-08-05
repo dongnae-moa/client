@@ -57,7 +57,10 @@ function describeError(error: unknown) {
 export default function MyMissionsScreen() {
   const { colors } = useTheme();
   const { user } = useAuth();
-  const { origin } = useCurrentLocation(true);
+  // _layout.tsx가 lazy:false라 이 화면도 앱을 켜는 순간 마운트된다. 위치를 바로 켜면
+  // 열어보지도 않은 화면이 GPS를 잡으므로, 실제로 화면이 열린 뒤에만 요청한다.
+  const [activated, setActivated] = useState(false);
+  const { origin } = useCurrentLocation(activated);
   const [missions, setMissions] = useState<Mission[]>([]);
   const [participations, setParticipations] = useState<
     Record<string, Participation[]>
@@ -119,6 +122,7 @@ export default function MyMissionsScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setActivated(true);
       void load();
     }, [load]),
   );

@@ -22,10 +22,9 @@ export type SubmitProofRequest = {
 };
 
 /**
- * 퀘스트에 들어온 참여·제출 목록. 등록자가 심사할 때 쓴다.
+ * 퀘스트 참여자 목록 조회. 등록자가 들어온 인증을 심사할 때 쓴다.
  *
- * 참여 시작이 `POST /v1/quests/{questId}/participations`라 같은 컬렉션의 GET으로 뒀다.
- * 명세를 따로 받지 못해 추정한 경로이므로, 서버가 다르면 이 함수의 경로만 고치면 된다.
+ * 등록자 본인이 아니면 403, 퀘스트가 없으면 404가 온다.
  */
 export function getQuestParticipations(questId: number) {
   return apiRequest<Participation[]>(

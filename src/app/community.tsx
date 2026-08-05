@@ -30,6 +30,19 @@ type CommunityComment = {
   body: string;
 };
 
+/**
+ * 동네 투표. 게시글에 딸린 형태라 별도 카테고리를 만들지 않았다.
+ *
+ * 투표하기 전에는 결과를 숨긴다. 먼저 본 비율에 끌려가지 않게 하려는 것이고,
+ * 다른 앱의 투표도 대부분 같은 방식이다.
+ */
+type CommunityPoll = {
+  question: string;
+  options: { id: string; label: string; votes: number }[];
+  /** 내가 고른 항목. 아직 투표 전이면 null. */
+  votedOptionId?: string | null;
+};
+
 type CommunityPost = {
   id: string;
   category: Exclude<CommunityTab, "ALL">;
@@ -43,6 +56,7 @@ type CommunityPost = {
   rule?: string;
   verified?: boolean;
   brag?: BragType;
+  poll?: CommunityPoll;
   likes: number;
   liked: boolean;
   comments: CommunityComment[];
@@ -109,6 +123,36 @@ const SEED_POSTS: CommunityPost[] = [
     comments: [],
   },
   {
+    id: "story-poll-bench",
+    category: "STORY",
+    title: "청운동 쉼터 벤치, 어디에 놓으면 좋을까요?",
+    body:
+      "구청에서 벤치 두 개를 더 놓아준다고 해요. 어디가 제일 아쉬웠는지 골라주세요. " +
+      "가장 많이 나온 곳으로 의견을 모아 전달할게요.",
+    author: "청운동주민회",
+    neighborhood: "청운동",
+    timeLabel: "3시간 전",
+    poll: {
+      question: "벤치가 가장 필요한 곳은?",
+      options: [
+        { id: "bus-stop", label: "버스정류장 앞 그늘", votes: 34 },
+        { id: "playground", label: "놀이터 입구", votes: 21 },
+        { id: "hill", label: "언덕길 중간 계단", votes: 47 },
+        { id: "market", label: "시장 골목 끝", votes: 12 },
+      ],
+      votedOptionId: null,
+    },
+    likes: 18,
+    liked: false,
+    comments: [
+      {
+        id: "poll-comment-1",
+        author: "언덕길출근",
+        body: "언덕길 중간에 하나만 있어도 숨 돌리기 훨씬 좋을 것 같아요.",
+      },
+    ],
+  },
+  {
     id: "story-recruit",
     category: "STORY",
     title: "오늘 저녁 공원 안내판 확인하실 분?",
@@ -159,7 +203,17 @@ export default function CommunityScreen() {
         const withSystemRule = saved.some((post) => post.id === SYSTEM_NEWS.id)
           ? saved
           : [SYSTEM_NEWS, ...saved];
-        setPosts(withSystemRule);
+        // 저장된 글은 그대로 두고 새로 추가된 씨앗 글만 채워 넣는다. 이렇게 하지 않으면
+        // 커뮤니티 탭을 한 번이라도 연 기기에서는 나중에 추가한 글이 영영 보이지 않는다.
+        const existingIds = new Set(withSystemRule.map((post) => post.id));
+        const missingSeeds = SEED_POSTS.filter(
+          (post) => !existingIds.has(post.id),
+        );
+        setPosts(
+          missingSeeds.length > 0
+            ? [...withSystemRule, ...missingSeeds]
+            : withSystemRule,
+        );
       } catch {
         setPosts(SEED_POSTS);
       }
@@ -226,6 +280,33 @@ export default function CommunityScreen() {
     persist(posts.map((post) => post.id === id ? { ...post, liked: !post.liked, likes: post.likes + (post.liked ? -1 : 1) } : post));
   };
 
+  /** 투표하거나 고른 항목을 바꾼다. 같은 항목을 다시 누르면 아무 일도 하지 않는다. */
+  const votePoll = (postId: string, optionId: string) => {
+    persist(
+      posts.map((post) => {
+        if (post.id !== postId || !post.poll) return post;
+        const previous = post.poll.votedOptionId ?? null;
+        if (previous === optionId) return post;
+        return {
+          ...post,
+          poll: {
+            ...post.poll,
+            votedOptionId: optionId,
+            options: post.poll.options.map((option) => {
+              if (option.id === optionId) {
+                return { ...option, votes: option.votes + 1 };
+              }
+              if (option.id === previous) {
+                return { ...option, votes: Math.max(0, option.votes - 1) };
+              }
+              return option;
+            }),
+          },
+        };
+      }),
+    );
+  };
+
   const addComment = (id: string) => {
     const clean = comment.trim();
     if (!clean) return;
@@ -264,7 +345,7 @@ export default function CommunityScreen() {
           </View>
 
           <View style={styles.postTagRow}>
-            <View style={[styles.categoryBadge, { backgroundColor: post.category === "NEWS" ? colors.greenSoft : colors.surfaceRaised }]}><Ionicons name={post.category === "NEWS" ? "newspaper-outline" : post.category === "VERIFY" ? "checkmark-circle-outline" : post.brag === "RECRUIT" ? "people-outline" : "chatbubble-ellipses-outline"} size={13} color={post.category === "NEWS" ? colors.greenInk : colors.purple} /><Text style={[styles.categoryText, { color: post.category === "NEWS" ? colors.greenInk : colors.text }]}>{post.category === "NEWS" ? "동네 소식" : post.category === "VERIFY" ? "미션 인증" : post.brag === "POINT" ? "포인트 자랑" : post.brag === "BADGE" ? "배지 자랑" : post.brag === "RECRUIT" ? "미션 모집" : "이웃 이야기"}</Text></View>
+            <View style={[styles.categoryBadge, { backgroundColor: post.category === "NEWS" ? colors.greenSoft : colors.surfaceRaised }]}><Ionicons name={post.category === "NEWS" ? "newspaper-outline" : post.category === "VERIFY" ? "checkmark-circle-outline" : post.poll ? "bar-chart-outline" : post.brag === "RECRUIT" ? "people-outline" : "chatbubble-ellipses-outline"} size={13} color={post.category === "NEWS" ? colors.greenInk : colors.purple} /><Text style={[styles.categoryText, { color: post.category === "NEWS" ? colors.greenInk : colors.text }]}>{post.category === "NEWS" ? "동네 소식" : post.category === "VERIFY" ? "미션 인증" : post.poll ? "동네 투표" : post.brag === "POINT" ? "포인트 자랑" : post.brag === "BADGE" ? "배지 자랑" : post.brag === "RECRUIT" ? "미션 모집" : "이웃 이야기"}</Text></View>
             {post.verified ? <View style={styles.verifiedRow}><Ionicons name="shield-checkmark" size={13} color={colors.green} /><Text style={[styles.verifiedText, { color: colors.green }]}>이웃 검토 완료</Text></View> : null}
           </View>
           <Text style={[styles.postTitle, { color: colors.text }]}>{post.title}</Text>
@@ -274,6 +355,7 @@ export default function CommunityScreen() {
           {post.brag === "BADGE" ? <View style={[styles.bragCard, { backgroundColor: colors.greenSoft, borderColor: colors.green }]}><Ionicons name="ribbon" size={26} color={colors.greenInk} /><View><Text style={[styles.bragValue, { color: colors.greenInk }]}>환경 지킴이</Text><Text style={[styles.bragLabel, { color: colors.muted }]}>벤치 정리 미션 5회 달성</Text></View></View> : null}
           {post.image ? <Image source={typeof post.image === "string" ? { uri: post.image } : post.image} style={[styles.postImage, { backgroundColor: colors.surfaceRaised }]} contentFit="cover" transition={180} /> : null}
           {post.rule ? <View style={[styles.ruleCard, { backgroundColor: colors.surfaceRaised }]}><Ionicons name="flash-outline" size={14} color={colors.green} /><Text style={[styles.ruleText, { color: colors.muted }]}>{post.rule}</Text></View> : null}
+          {post.poll ? <PollCard poll={post.poll} onVote={(optionId) => votePoll(post.id, optionId)} /> : null}
 
           <View style={[styles.actions, { borderTopColor: colors.border }]}>
             <Pressable onPress={() => toggleLike(post.id)} style={styles.action}><Ionicons name={post.liked ? "heart" : "heart-outline"} size={18} color={post.liked ? colors.orange : colors.muted} /><Text style={[styles.actionText, { color: post.liked ? colors.orange : colors.muted }]}>{post.likes}</Text></Pressable>
@@ -311,7 +393,126 @@ function ComposerModal({ visible, category, brag, body, photoUri, onChangeCatego
   </Modal>;
 }
 
+/**
+ * 투표 카드.
+ *
+ * 투표 전에는 항목만 보여주고, 투표한 뒤에 비율 막대와 퍼센트를 연다. 막대는 별도 라이브러리
+ * 없이 항목 배경에 너비 퍼센트를 준 View를 깔아 그린다(이 파일에 진행 막대 UI가 없었다).
+ */
+function PollCard({
+  poll,
+  onVote,
+}: {
+  poll: CommunityPoll;
+  onVote: (optionId: string) => void;
+}) {
+  const { colors } = useTheme();
+  const total = poll.options.reduce((sum, option) => sum + option.votes, 0);
+  const voted = poll.votedOptionId ?? null;
+  return (
+    <View
+      style={[
+        styles.pollCard,
+        { backgroundColor: colors.surfaceRaised, borderColor: colors.border },
+      ]}
+    >
+      <View style={styles.pollHeader}>
+        <Ionicons name="bar-chart-outline" size={15} color={colors.purple} />
+        <Text style={[styles.pollQuestion, { color: colors.text }]}>
+          {poll.question}
+        </Text>
+      </View>
+
+      {poll.options.map((option) => {
+        const selected = voted === option.id;
+        const percent = total > 0 ? Math.round((option.votes / total) * 100) : 0;
+        return (
+          <Pressable
+            key={option.id}
+            accessibilityRole="button"
+            accessibilityState={{ selected }}
+            accessibilityLabel={
+              voted ? `${option.label}, ${percent}퍼센트` : option.label
+            }
+            onPress={() => onVote(option.id)}
+            style={({ pressed }) => [
+              styles.pollOption,
+              {
+                backgroundColor: colors.surface,
+                borderColor: selected ? colors.green : colors.border,
+              },
+              pressed && styles.pollOptionPressed,
+            ]}
+          >
+            {voted ? (
+              <View
+                style={[
+                  styles.pollBar,
+                  {
+                    backgroundColor: selected ? colors.greenSoft : colors.border,
+                    width: `${percent}%` as `${number}%`,
+                  },
+                ]}
+              />
+            ) : null}
+            <View style={styles.pollOptionRow}>
+              <Ionicons
+                name={selected ? "checkmark-circle" : "ellipse-outline"}
+                size={15}
+                color={selected ? colors.greenInk : colors.faint}
+              />
+              <Text
+                numberOfLines={1}
+                style={[styles.pollLabel, { color: colors.text }]}
+              >
+                {option.label}
+              </Text>
+              {voted ? (
+                <Text
+                  style={[
+                    styles.pollPercent,
+                    { color: selected ? colors.greenInk : colors.muted },
+                  ]}
+                >
+                  {percent}%
+                </Text>
+              ) : null}
+            </View>
+          </Pressable>
+        );
+      })}
+
+      <Text style={[styles.pollFooter, { color: colors.muted }]}>
+        {voted
+          ? `${total}명 참여 · 다른 항목을 눌러 바꿀 수 있어요`
+          : `${total}명 참여 · 투표하면 결과가 보여요`}
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  pollCard: { borderRadius: 14, borderWidth: 1, marginTop: 12, padding: 13 },
+  pollHeader: { alignItems: "center", flexDirection: "row", gap: 6 },
+  pollQuestion: { flex: 1, fontFamily: "WantedSansB", fontSize: 12 },
+  pollOption: {
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 8,
+    overflow: "hidden",
+  },
+  pollOptionPressed: { opacity: 0.75 },
+  pollBar: { bottom: 0, left: 0, position: "absolute", top: 0 },
+  pollOptionRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 7,
+    paddingHorizontal: 11,
+    paddingVertical: 10,
+  },
+  pollLabel: { flex: 1, fontFamily: "WantedSansB", fontSize: 11 },
+  pollPercent: { fontFamily: "WantedSansB", fontSize: 11 },
+  pollFooter: { fontFamily: "WantedSansR", fontSize: 9, marginTop: 9 },
   introRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   introCopy: { flex: 1 },
   subtitle: { fontFamily: "WantedSansB", fontSize: 22 },
