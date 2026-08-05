@@ -7,7 +7,6 @@ import MapView, {
   PROVIDER_GOOGLE,
   type MapPressEvent,
 } from "react-native-maps";
-import { useAuth } from "../auth/AuthContext";
 import { statusMeta, type Mission } from "../data/missions";
 import { darkMapStyle } from "../theme/darkMapStyle";
 import ExpoGoMissionMap from "./ExpoGoMissionMap";
@@ -77,7 +76,6 @@ export default function MissionMap({
   bottomPadding,
 }: MissionMapProps) {
   const { colors, mode } = useTheme();
-  const { user, updateUser, refreshProfile } = useAuth();
   const mapRef = useRef<MapView>(null);
   const centeredOnUser = useRef(false);
   const animatedFor = useRef<string | null>(null);
@@ -181,7 +179,6 @@ export default function MissionMap({
       onPressMap={handleMapPress}
     >
       {pins.map((pin) => {
-        if (pin.mission.authorNickname === user?.nickname) return;
         const selected = pin.mission.id === selectedId;
         return (
           <MissionMarker

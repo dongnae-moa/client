@@ -61,6 +61,27 @@ export type Mission = {
   checkpoints: readonly string[];
 };
 
+/** 로그인한 사용자와 미션 작성자가 같은지 비교한다. */
+export function isMissionCreatedByUser(
+  mission: Pick<Mission, "authorNickname">,
+  nickname?: string | null,
+) {
+  const currentNickname = nickname?.trim();
+  return Boolean(
+    currentNickname && mission.authorNickname.trim() === currentNickname,
+  );
+}
+
+/** 본인이 만든 미션을 사용자에게 보여줄 목록에서 완전히 제외한다. */
+export function excludeMissionsCreatedByUser(
+  missions: readonly Mission[],
+  nickname?: string | null,
+) {
+  return missions.filter(
+    (mission) => !isMissionCreatedByUser(mission, nickname),
+  );
+}
+
 export const sortOptions = [
   { id: "distance", label: "가까운 순" },
   { id: "points", label: "포인트 많은 순" },
