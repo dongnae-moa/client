@@ -1,56 +1,53 @@
-# Welcome to your Expo app 👋
+Team 12 기획: 민지호, 백엔드: 배재현, 프론트엔드: 신성은진
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+주제: 지속가능한 도시와 공동체
+프로젝트 명: 동네모아 Dongnae-Moa
+한 줄 설명: 주민이 제보한 동네 문제를 AI가 5분짜리 '마이크로 퀘스트'로 자동 가공하여, 주민 스스로 동네를 가꾸고 해결하도록 돕는 주민 참여형 지역 사회 플랫폼, 주민 주도적 공동체 커뮤니티
 
-## Get started
+프로젝트 개요:
+주민이 제보한 동네 문제를 AI가 분석해 3~10분 내에 수행 가능한 ‘마이크로 퀘스트’로 자동 변환하는 주민 참여형 지역사회 플랫폼
+주민은 주변 퀘스트에 참여하고 사진 등으로 해결을 인증하며, 포인트·XP·배지 등의 보상을 받을 수 있음
+획득한 포인트는 기프티콘, 지역 상점 쿠폰, 공공시설 혜택 등으로 교환할 수 있음
+개인의 활동이 동네 전체의 Community XP와 공동 목표에도 반영되어 주민들의 지속적인 참여를 유도함
+목표: 주민의 짧은 일상 참여가 실제 지역 문제 해결과 지역 공동체 활성화로 이어지는 구조를 만드는 것
+문제 해결을 위한 일상 참여를 유도하는 동기 부여가 가장 중요할 것 같음
+서초동 사용자가 반포동에서 퀘스트를 하면
+개인: +20P / +30XP
+반포동: Community XP +1
 
-1. Install dependencies
+MVP (최소 구현 기능)
+- 동네 가입 (GPS 기반, Unique)
+- 퀘스트 등록 / 삭제
+- 퀘스트 참여 및 완료 처리
+- 퀘스트 달성에 대한 단체 보상 (게이미피케이션을 통한 동기 부여)
+- 동네 채팅(혹은 게시물) 기능 (퀘스트 하실분 모집 등)
 
-   ```bash
-   npm install
-   ```
+추가 구현 기능
+- 퀘스트 보상에 대한 여러 사용처 (기프티콘, 프로필 장식, 근처 가게 할인 혜택 등 구매)
+- 퀘스트 달성에 따른 랭킹 (경쟁을 통해 참여 촉진)
+- 유저 신고 기능 (퀘스트 등록자 잠수 행위 방지 및 불건전한 활동 유저 처리)
 
-2. Start the app
+개발 시 고려 사항
+- ‘마이크로 퀘스트’로 어떻게 가공할 것인가?
+- 퀘스트 참여자들은 퀘스트 진행을 이미지 등록을 통해 알리고(예. 쓰레기를 치운 사진 업로드), 퀘스트 등록자 또는 타 유저가 실제 미션을 수행했는지 확인(미션 등록한 사람, 수행한 사람, 검증한 사람 모두에게 포인트 지급)
+- 악용을 막기 위한 대책 (각 User에 대해 전화번호 인증을 통한 Unique 검증, 동일 유저가 자주 비슷한 게시물 업로드 방지)
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+예시
+공원에 쓰레기가 버려져 있음.
+주민이 앱으로 문제점을 이미지와 함께 게시글로 제보
+AI 분석 -> 퀘스트 생성 (OO 지역 내 쓰레기 치우고 인증하기)
+퀘스트를 본 유저들이 퀘스트를 진행함
+통행을 방해하는 공유 킥보드 & 자전거 치우기 미션
+A가 “인도 한복판에 있는 GCOO 옆으로 치우기” 미션 등록 -> 포인트 획득
+(본인이 등록한 미션 본인이 해결 불가)
+B가 미션 수행 -> 포인트 획득
+C가 미션 수행 진위여부(B가 진짜 미션을 했는지) 확인 -> 포인트 획득
+지역 사회 단체 모금 행사
+미션 수행 진위여부 확인 어려움 -> 단순 공지 용도
+혹은 사진 인증 등을 통해 포인트 적립
+불법 주차 자동차 대신 신고
+안전신문고에 신고해 담당자의 답변을 캡처 후 업로드하면 포인트 지급
+정기적인 동네에서 주민 문제 투표
+투표 업로드 혹은 참여 시 포인트 획득
+또는
+AI가 반복되는 문제에 대해 자동으로 투표 생성
