@@ -16,6 +16,18 @@ export default {
         // PROVIDER_GOOGLE을 쓰므로 iOS도 키가 있어야 지도가 렌더링된다.
         googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
       },
+      // 백엔드가 아직 HTTPS를 지원하지 않는다. standalone 빌드는 기본적으로
+      // 평문(HTTP) 통신을 차단하므로 API 서버 호스트만 ATS 예외로 허용한다.
+      infoPlist: {
+        NSAppTransportSecurity: {
+          NSExceptionDomains: {
+            "165.140.22.60": {
+              NSExceptionAllowsInsecureHTTPLoads: true,
+              NSIncludesSubdomains: false,
+            },
+          },
+        },
+      },
     },
     android: {
       adaptiveIcon: {
@@ -31,6 +43,9 @@ export default {
           apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
         },
       },
+      // Android 9(API 28)부터 평문(HTTP) 트래픽이 기본 차단된다.
+      // 백엔드가 HTTPS로 전환되면 이 설정과 위 iOS 예외는 제거한다.
+      usesCleartextTraffic: true,
     },
     web: {
       output: "static",
