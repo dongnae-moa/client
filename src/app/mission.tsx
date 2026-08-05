@@ -15,6 +15,10 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ApiError } from "../api/client";
+import {
+  joinQuest,
+  type Participation,
+} from "../api/participations";
 import { getQuests } from "../api/quests";
 import { useAuth } from "../auth/AuthContext";
 import { useNavBarHeight } from "../components/FloatingNavBar";
@@ -22,6 +26,7 @@ import MissionComposer from "../components/MissionComposer";
 import MissionDetailSheet from "../components/MissionDetailSheet";
 import MissionFilterPanel from "../components/MissionFilterPanel";
 import MissionMap from "../components/MissionMap";
+import MissionProofComposer from "../components/MissionProofComposer";
 import {
   countActiveFilters,
   DEFAULT_FILTERS,
@@ -35,6 +40,11 @@ import {
   type MissionFilters,
 } from "../data/missions";
 import { getSavedMissionIds, toggleMissionSaved } from "../data/savedMissions";
+import {
+  getStoredParticipations,
+  storeParticipation,
+  type ParticipationByQuest,
+} from "../data/participationStore";
 import { useCurrentLocation } from "../hooks/useCurrentLocation";
 import { useTheme } from "../theme/ThemeContext";
 
@@ -68,7 +78,13 @@ export default function MissionScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [startedId, setStartedId] = useState<string | null>(null);
+  const [participations, setParticipations] =
+    useState<ParticipationByQuest>({});
+  const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [participationError, setParticipationError] = useState<string | null>(
+    null,
+  );
+  const [proofOpen, setProofOpen] = useState(false);
   const [focusRequest, setFocusRequest] = useState(0);
   const [barHeight, setBarHeight] = useState(0);
   const [chipsHeight, setChipsHeight] = useState(0);
@@ -97,6 +113,23 @@ export default function MissionScreen() {
   const [allMissions, setAllMissions] = useState<Mission[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const neighborhoodId = user?.neighborhoodId ?? null;
+  const userId = user?.userId ?? null;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (userId == null) {
+        setParticipations({});
+        return;
+      }
+      let active = true;
+      void getStoredParticipations(userId).then((stored) => {
+        if (active) setParticipations(stored);
+      });
+      return () => {
+        active = false;
+      };
+    }, [userId]),
+  );
 
   /**
    * 동네 퀘스트 목록을 서버에서 가져온다. 거리 계산과 가까운 순 정렬은 서버가 해준다.
@@ -151,10 +184,15 @@ export default function MissionScreen() {
   const activeFilterCount = countActiveFilters(filters);
   const selectedMission =
     missions.find((mission) => mission.id === selectedId) ?? null;
+  const selectedParticipation = selectedMission
+    ? participations[selectedMission.id] ?? null
+    : null;
 
   // 필터를 조이다가 열려 있던 미션이 목록에서 빠지면 상세도 닫는다.
   useEffect(() => {
     if (selectedId && !missions.some((mission) => mission.id === selectedId)) {
+      setProofOpen(false);
+      setParticipationError(null);
       setSelectedId(null);
     }
   }, [missions, selectedId]);
@@ -165,12 +203,58 @@ export default function MissionScreen() {
 
   const selectMission = useCallback((id: string) => {
     setFilterOpen(false);
+    setProofOpen(false);
+    setParticipationError(null);
     setSelectedId(id);
   }, []);
 
   const toggleSaved = useCallback(async (id: string) => {
     setSavedIds(await toggleMissionSaved(id));
   }, []);
+
+  const rememberParticipation = useCallback(
+    (participation: Participation) => {
+      setParticipations((current) => ({
+        ...current,
+        [String(participation.questId)]: participation,
+      }));
+      if (userId != null) {
+        void storeParticipation(userId, participation).catch((storageError) =>
+          console.log("[participation] ✗ 로컬 상태 저장 실패", storageError),
+        );
+      }
+    },
+    [userId],
+  );
+
+  const startMission = useCallback(
+    async (mission: Mission) => {
+      const questId = Number(mission.id);
+      if (!Number.isSafeInteger(questId) || questId <= 0) {
+        setParticipationError("미션 식별자가 올바르지 않아 시작할 수 없어요.");
+        return;
+      }
+      setJoiningId(mission.id);
+      setParticipationError(null);
+      try {
+        const participation = await joinQuest(questId);
+        rememberParticipation(participation);
+        setCreatedNotice(`"${mission.title}" 미션을 시작했어요.`);
+      } catch (requestError) {
+        console.log("[participation] ✗ 미션 시작 실패", requestError);
+        setParticipationError(
+          requestError instanceof ApiError
+            ? `${requestError.message} (HTTP ${requestError.status})`
+            : `미션을 시작하지 못했어요: ${
+                (requestError as Error)?.message ?? "알 수 없는 오류"
+              }`,
+        );
+      } finally {
+        setJoiningId(null);
+      }
+    },
+    [rememberParticipation],
+  );
 
   // 목록에서 지도로 돌아올 때는 선택해둔 핀을 다시 화면 중앙으로 맞춘다. 목록에 가려진
   // 동안에도 지도는 계속 살아 있어서, 카메라를 옮겨두지 않으면 엉뚱한 곳이 보인다.
@@ -234,6 +318,7 @@ export default function MissionScreen() {
           {missions.length > 0 ? (
             missions.map((mission) => {
               const selected = selectedId === mission.id;
+              const participation = participations[mission.id] ?? null;
               const status = statusMeta[mission.status];
               const titleSize =
                 mission.title.length > 25
@@ -365,20 +450,36 @@ export default function MissionScreen() {
                         {
                           backgroundColor: selected
                             ? colors.green
+                            : participation
+                              ? colors.greenSoft
                             : colors.surfaceRaised,
                         },
                       ]}
                     >
                       <Ionicons
                         name={
-                          startedId === mission.id
+                          participation?.status === "JOINED"
                             ? "walk-outline"
+                            : participation?.status === "SUBMITTED"
+                              ? "time-outline"
+                              : participation?.status === "APPROVED"
+                                ? "checkmark-circle-outline"
+                                : participation?.status === "REJECTED"
+                                  ? "alert-circle-outline"
                             : selected
                               ? "checkmark"
                               : "arrow-forward"
                         }
                         size={17}
-                        color={selected ? "#17310b" : colors.text}
+                        color={
+                          selected
+                            ? "#17310b"
+                            : participation?.status === "REJECTED"
+                              ? colors.orange
+                              : participation
+                                ? colors.greenInk
+                                : colors.text
+                        }
                       />
                     </View>
                   </View>
@@ -658,13 +759,16 @@ export default function MissionScreen() {
       {selectedMission ? (
         <MissionDetailSheet
           mission={selectedMission}
-          started={startedId === selectedMission.id}
-          onToggleStart={() =>
-            setStartedId((current) =>
-              current === selectedMission.id ? null : selectedMission.id,
-            )
-          }
-          onClose={() => setSelectedId(null)}
+          participation={selectedParticipation}
+          joining={joiningId === selectedMission.id}
+          actionError={participationError}
+          onStart={() => void startMission(selectedMission)}
+          onOpenProof={() => setProofOpen(true)}
+          onClose={() => {
+            setProofOpen(false);
+            setParticipationError(null);
+            setSelectedId(null);
+          }}
           onShowOnMap={
             viewMode === "list"
               ? () => {
@@ -688,6 +792,18 @@ export default function MissionScreen() {
           setCreatedNotice(`"${title}" 미션을 등록했어요.`);
           // 방금 만든 미션이 지도와 목록에 바로 보이도록 다시 불러온다.
           void loadMissions();
+        }}
+      />
+
+      <MissionProofComposer
+        visible={proofOpen}
+        mission={selectedMission}
+        participation={selectedParticipation}
+        onClose={() => setProofOpen(false)}
+        onSubmitted={(participation) => {
+          rememberParticipation(participation);
+          setProofOpen(false);
+          setCreatedNotice("완료 인증을 제출했어요. 등록자의 검토를 기다려요.");
         }}
       />
 
