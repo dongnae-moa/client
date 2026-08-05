@@ -3,6 +3,7 @@ import { type Href, useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useState } from "react";
 import { Pressable, Share, StyleSheet, Text, View } from "react-native";
 import { ApiError } from "../api/client";
+import { getQuests } from "../api/quests";
 import {
   applyProfileDecoration,
   getMyRewards,
@@ -12,6 +13,10 @@ import type { RewardRedemption } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import AppHeader from "../components/AppHeader";
 import { ScreenSurface, SurfaceCard } from "../components/ScreenSurface";
+import {
+  DUMMY_ANCHOR,
+  excludeMissionsCreatedByUser,
+} from "../data/missions";
 import { getSavedMissionIds } from "../data/savedMissions";
 import { useTheme } from "../theme/ThemeContext";
 
@@ -60,11 +65,36 @@ export default function MyScreen() {
     }
   }, [refreshProfile, updateUser]);
 
+  const loadSavedMissionCount = useCallback(async () => {
+    if (user?.neighborhoodId == null) {
+      setSavedMissionCount(0);
+      return;
+    }
+    try {
+      const [savedIds, missions] = await Promise.all([
+        getSavedMissionIds(),
+        getQuests({
+          neighborhoodId: user.neighborhoodId,
+          latitude: DUMMY_ANCHOR.latitude,
+          longitude: DUMMY_ANCHOR.longitude,
+        }),
+      ]);
+      setSavedMissionCount(
+        excludeMissionsCreatedByUser(missions, user.nickname).filter((mission) =>
+          savedIds.includes(mission.id),
+        ).length,
+      );
+    } catch (requestError) {
+      console.log("[my] ✗ 저장 미션 개수 조회 실패", requestError);
+      setSavedMissionCount(0);
+    }
+  }, [user?.neighborhoodId, user?.nickname]);
+
   useFocusEffect(
     useCallback(() => {
       void loadBenefits();
-      void getSavedMissionIds().then((ids) => setSavedMissionCount(ids.length));
-    }, [loadBenefits]),
+      void loadSavedMissionCount();
+    }, [loadBenefits, loadSavedMissionCount]),
   );
 
   const applyDecoration = async (benefit: RewardRedemption) => {

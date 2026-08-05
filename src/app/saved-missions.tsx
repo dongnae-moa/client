@@ -7,7 +7,11 @@ import { getQuests } from "../api/quests";
 import { useAuth } from "../auth/AuthContext";
 import AppHeader from "../components/AppHeader";
 import { ScreenSurface, SurfaceCard } from "../components/ScreenSurface";
-import { formatDistance, type Mission } from "../data/missions";
+import {
+  excludeMissionsCreatedByUser,
+  formatDistance,
+  type Mission,
+} from "../data/missions";
 import { getSavedMissionIds, setMissionSaved } from "../data/savedMissions";
 import { useCurrentLocation } from "../hooks/useCurrentLocation";
 import { useTheme } from "../theme/ThemeContext";
@@ -28,7 +32,14 @@ export default function SavedMissionsScreen() {
       .then(setNeighborhoodMissions)
       .catch((requestError) => console.log("[saved] ✗ 목록 조회 실패", requestError));
   }, [neighborhoodId, origin.latitude, origin.longitude]));
-  const missions = useMemo(() => neighborhoodMissions.filter((mission) => savedIds.includes(mission.id)), [neighborhoodMissions, savedIds]);
+  const missions = useMemo(
+    () =>
+      excludeMissionsCreatedByUser(
+        neighborhoodMissions.filter((mission) => savedIds.includes(mission.id)),
+        user?.nickname,
+      ),
+    [neighborhoodMissions, savedIds, user?.nickname],
+  );
 
   const remove = async (id: string) => {
     setSavedIds(await setMissionSaved(id, false));

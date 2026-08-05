@@ -17,7 +17,11 @@ import { getQuests } from "../api/quests";
 import { useAuth } from "../auth/AuthContext";
 import AppHeader from "../components/AppHeader";
 import MissionComposer from "../components/MissionComposer";
-import { formatDistance, type Mission } from "../data/missions";
+import {
+  excludeMissionsCreatedByUser,
+  formatDistance,
+  type Mission,
+} from "../data/missions";
 import { neighborhoodMetrics } from "../data/mock";
 import { useCurrentLocation } from "../hooks/useCurrentLocation";
 import { useTheme } from "../theme/ThemeContext";
@@ -161,17 +165,21 @@ export default function Index() {
     }, [loadMissions]),
   );
 
-  const recommendedMission = missions[0] ?? null;
-  const otherMissions = missions.slice(1, 5);
+  const visibleMissions = useMemo(
+    () => excludeMissionsCreatedByUser(missions, user?.nickname),
+    [missions, user?.nickname],
+  );
+  const recommendedMission = visibleMissions[0] ?? null;
+  const otherMissions = visibleMissions.slice(1, 5);
   // 가장 짧게 끝나는 미션을 "오늘의 3분 미션" 자리에 둔다.
   const quickMission = useMemo(
     () =>
-      missions.reduce<Mission | null>(
+      visibleMissions.reduce<Mission | null>(
         (shortest, mission) =>
           !shortest || mission.minutes < shortest.minutes ? mission : shortest,
         null,
       ),
-    [missions],
+    [visibleMissions],
   );
 
   return (

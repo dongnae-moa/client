@@ -25,6 +25,7 @@ import MissionMap from "../components/MissionMap";
 import {
   countActiveFilters,
   DEFAULT_FILTERS,
+  excludeMissionsCreatedByUser,
   filterMissions,
   formatDistance,
   statusFilters,
@@ -140,8 +141,12 @@ export default function MissionScreen() {
   );
 
   const missions = useMemo(
-    () => filterMissions(allMissions, filters),
-    [allMissions, filters],
+    () =>
+      excludeMissionsCreatedByUser(
+        filterMissions(allMissions, filters),
+        user?.nickname,
+      ),
+    [allMissions, filters, user?.nickname],
   );
   const activeFilterCount = countActiveFilters(filters);
   const selectedMission =
@@ -228,7 +233,6 @@ export default function MissionScreen() {
         >
           {missions.length > 0 ? (
             missions.map((mission) => {
-              if (mission.authorNickname === user?.nickname) return;
               const selected = selectedId === mission.id;
               const status = statusMeta[mission.status];
               const titleSize =
